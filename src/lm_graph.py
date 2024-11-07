@@ -31,9 +31,13 @@ def br_gene_topic(state: overall_state) -> Sequence[str]:
         return ["LLM_Tags"]
 # ------------------------------
 # construct vision graph
+from tmp_chain import extract_image_hashtags
 def sub_vision_node(state: overall_state) -> overall_state:
     print(state["topic"])
-    return
+    vlm_tags = extract_image_hashtags(state["image_url"][0])
+    print(vlm_tags)
+    print(vlm_tags["tags"])
+    return {"tags": vlm_tags["tags"]}
 
 sub_vision_builder = StateGraph(overall_state)
 
@@ -51,8 +55,6 @@ def sub_language_node(state: overall_state) -> overall_state:
     llm_tags = extract_review_hashtags(state["review_text"][0])
     print(llm_tags)
     print(llm_tags["tags"])
-    print(llm_tags["index"])
-    # print(llm_tags[0])
     return {"tags": llm_tags["tags"]}
 
 sub_language_builder = StateGraph(overall_state)
@@ -83,7 +85,9 @@ graph = builder.compile()
 # for chunk in graph.stream({"topic": ["VL"], "image_url": ["1234"]}):
 #     print(chunk)
 
-graph.invoke({"topic": ["VL"], "image_url": ["1234"], "review_text": ["빽다방 별로에요 맛이 없어요"]})
+ret = graph.invoke({"topic": ["VL"], "image_url": ["/Users/yangtaegyu/test/AI/dummy/airplane.jpg"], "review_text": ["시원하고 분위기 좋음. 블루보틀은 여기로 처음 와봤는데 내부 인테리어가 깔끔하고 미니멀함."]})
+print(ret)
+print(ret['tags'])
 # ------------------------------
 # graph image 생성
 from IPython.display import Image, display # type: ignore
