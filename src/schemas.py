@@ -1,6 +1,6 @@
 # schemas.py
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, DECIMAL, Boolean, UniqueConstraint
+from sqlalchemy import Column, BigInteger, String, ForeignKey, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
@@ -9,13 +9,14 @@ Base = declarative_base()
 # Place ORM 모델
 class Place(Base):
     __tablename__ = 'Place'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    placeId = Column(Integer, nullable=False, unique=True)
-    address = Column(String(255))
-    x = Column(DECIMAL(10, 7))
-    y = Column(DECIMAL(10, 7))
-    createdAt = Column(DateTime, default=func.now())
-    updatedAt = Column(DateTime, default=func.now(), onupdate=func.now())
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    placeId = Column(String(255), unique=True, nullable=True)
+    placeName = Column(String(255), nullable=True)
+    address = Column(String(255), nullable=True)
+    x = Column(String(255), nullable=True)
+    y = Column(String(255), nullable=True)
+    createdAt = Column(DateTime, server_default=func.now(), nullable=False)
+    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
     
     # Place_Tag와의 관계 설정
     place_tags = relationship("PlaceTag", back_populates="place", cascade="all, delete-orphan")
@@ -24,8 +25,13 @@ class Place(Base):
 # Tag ORM 모델
 class Tag(Base):
     __tablename__ = 'Tag'
-    tagId = Column(Integer, primary_key=True, autoincrement=True)
-    tagName = Column(String(100), nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    tagName = Column(String(255), nullable=True)
+    # createdAt = Column(DateTime, nullable=True, default=None)
+    # updatedAt = Column(DateTime, nullable=True, default=None)
+    createdAt = Column(DateTime, server_default=func.now(), nullable=False)
+    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    
     
     # Place_Tag와의 관계 설정
     place_tags = relationship("PlaceTag", back_populates="tag", cascade="all, delete-orphan")
@@ -34,9 +40,9 @@ class Tag(Base):
 # Place_Tag ORM 모델
 class PlaceTag(Base):
     __tablename__ = 'Place_Tag'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    placeId = Column(Integer, ForeignKey('Place.placeId', ondelete='CASCADE'), nullable=False)
-    tagId = Column(Integer, ForeignKey('Tag.tagId', ondelete='CASCADE'), nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    placeId = Column(BigInteger, ForeignKey('Place.id', ondelete='CASCADE'), nullable=False)
+    tagId = Column(BigInteger, ForeignKey('Tag.id', ondelete='CASCADE'), nullable=False)
     isRepresentative = Column(Boolean, default=False)
     
     # 관계 설정

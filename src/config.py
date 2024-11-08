@@ -11,7 +11,7 @@ AI_IP = "0.0.0.0"
 AI_PORT = 8000
 
 MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-MYSQL_PORT = os.getenv("MYSQL_PORT", 5432)
+MYSQL_PORT = os.getenv("MYSQL_PORT", 3306)
 MYSQL_USER = os.getenv("MYSQL_USER", "airoot")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "airoot")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "ai_db")

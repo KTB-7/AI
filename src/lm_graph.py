@@ -20,10 +20,12 @@ class overall_state(TypedDict):
     tags: Annotated[list[str], operator.add]
 
 # ------------------------------
+# tmp state
 def tmp(state : overall_state):
-    print(state["topic"], state["image_url"], state["review_text"], state["tags"])
+    # print("tmp", state["topic"][-1], state["image_url"][-1], state["review_text"][-1], state["tags"])
     return 
-    
+# ------------------------------
+# conditional branching
 def br_gene_topic(state: overall_state) -> Sequence[str]:
     if(state['topic'][0] == "VL"):
         return ["VLM_Tags", "LLM_Tags"]
@@ -31,13 +33,11 @@ def br_gene_topic(state: overall_state) -> Sequence[str]:
         return ["LLM_Tags"]
 # ------------------------------
 # construct vision graph
-from tmp_chain import extract_image_hashtags
+from model_chain import extract_image_hashtags
 def sub_vision_node(state: overall_state) -> overall_state:
-    print(state["topic"])
     vlm_tags = extract_image_hashtags(state["image_url"][0])
     print(vlm_tags)
-    print(vlm_tags["tags"])
-    return {"tags": vlm_tags["tags"]}
+    return {"tags": vlm_tags["positive_tags"] + vlm_tags["negative_tags"]}
 
 sub_vision_builder = StateGraph(overall_state)
 
@@ -49,13 +49,11 @@ sub_vision_builder.add_edge("sub_vision_node", END)
 sub_vision_graph = sub_vision_builder.compile()
 # ------------------------------
 # construct language graph
-from tmp_chain import extract_review_hashtags
+from model_chain import extract_review_hashtags
 def sub_language_node(state: overall_state) -> overall_state:
-    print(state["topic"])
     llm_tags = extract_review_hashtags(state["review_text"][0])
     print(llm_tags)
-    print(llm_tags["tags"])
-    return {"tags": llm_tags["tags"]}
+    return {"tags": llm_tags["positive_tags"] + llm_tags["negative_tags"]}
 
 sub_language_builder = StateGraph(overall_state)
 
@@ -82,18 +80,16 @@ builder.add_edge("concat", END)
 
 graph = builder.compile()
 # ------------------------------
-# for chunk in graph.stream({"topic": ["VL"], "image_url": ["1234"]}):
-#     print(chunk)
-
-ret = graph.invoke({"topic": ["VL"], "image_url": ["/Users/yangtaegyu/test/AI/dummy/airplane.jpg"], "review_text": ["시원하고 분위기 좋음. 블루보틀은 여기로 처음 와봤는데 내부 인테리어가 깔끔하고 미니멀함."]})
-print(ret)
-print(ret['tags'])
+# graph 예시
+# ret = graph.invoke({"topic": ["VL"], "image_url": ["/Users/yangtaegyu/test/AI/dummy/airplane.jpg"], "review_text": ["시원하고 분위기 좋음. 블루보틀은 여기로 처음 와봤는데 내부 인테리어가 깔끔하고 미니멀함."]})
+# print(ret)
+# print(ret['tags'])
 # ------------------------------
-# graph image 생성
-from IPython.display import Image, display # type: ignore
+# # graph image 생성
+# from IPython.display import Image, display # type: ignore
 
-image = Image(graph.get_graph().draw_mermaid_png())
+# image = Image(graph.get_graph().draw_mermaid_png())
 
-with open("graph_image.png", "wb") as file:
-    file.write(image.data)
+# with open("graph_image.png", "wb") as file:
+#     file.write(image.data)
 # ------------------------------
