@@ -57,5 +57,3 @@ async def create_tags(request: Tag_Request, session: AsyncSession = Depends(get_
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
     return Tag_Response(isGened=True)
-
-    return Tag_Response(isGened=True)
