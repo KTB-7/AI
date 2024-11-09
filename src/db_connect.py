@@ -3,6 +3,7 @@
 import asyncio
 import datetime
 import pandas as pd  # Pandas 임포트 추가
+import logging
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -10,6 +11,17 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from config import MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
 from schemas import Place, Tag, PlaceTag 
+
+# logging
+logging.basicConfig(
+    filename='db_operations.log',  # 로그 파일 이름
+    level=logging.INFO,  # 로그 레벨 설정 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format='%(asctime)s %(levelname)s:%(name)s:%(message)s',  # 로그 메시지 형식
+    datefmt='%Y-%m-%d %H:%M:%S'  # 날짜 형식
+)
+
+# logger obj create
+logger = logging.getLogger(__name__)
 
 # Database connection details
 user = MYSQL_USER
@@ -52,18 +64,24 @@ async def get_or_create_tag(session: AsyncSession, tag_name: str) -> Tag:
     result = await session.execute(stmt)
     tag = result.scalar_one_or_none()
     if tag is None:
-        tag = Tag(tagName=tag_name)
+        tag = Tag(tagName=tag_name, createdAt=datetime.datetime.now(), updatedAt=datetime.datetime.now())
         session.add(tag)
         try:
             await session.flush()  # 데이터베이스에 반영
+            print(f"Inserted Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
+            logger.info(f"Inserted Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")        
         except IntegrityError as e:
             await session.rollback()
             print(f"IntegrityError while creating tag '{tag_name}': {e.orig}")
+            logger.error(f"IntegrityError while creating tag '{tag_name}': {e.orig}")            
             raise e
         except Exception as e:
             await session.rollback()
             print(f"Unexpected error while creating tag '{tag_name}': {e}")
+            logger.error(f"Unexpected error while creating tag '{tag_name}': {e}")            
             raise e
+    else:
+        logger.info(f"Retrieved existing Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
     return tag
 
 async def add_place_tag(session: AsyncSession, place_id: int, tag_id: int, is_representative: bool) -> PlaceTag:
@@ -77,18 +95,45 @@ async def add_place_tag(session: AsyncSession, place_id: int, tag_id: int, is_re
     :return: The PlaceTag object that was inserted.
     :raises IntegrityError: If the combination of place_id and tag_id violates the unique constraint or other integrity constraints are violated.
     """
-    new_place_tag = PlaceTag(placeId=place_id, tagId=tag_id, isRepresentative=is_representative)
-    session.add(new_place_tag)
     try:
-        await session.flush()  # 트랜잭션 내에서 변경 사항을 데이터베이스에 반영
-        return new_place_tag
+        # 동일한 placeId와 tagId를 가진 PlaceTag가 존재하는지 확인
+        stmt = select(PlaceTag).where(
+            PlaceTag.placeId == place_id,
+            PlaceTag.tagId == tag_id
+        )
+        result = await session.execute(stmt)
+        existing_place_tag = result.scalar_one_or_none()
+        
+        if existing_place_tag:
+            # 기존 PlaceTag가 존재하면 tagCount를 1 증가시킵니다.
+            existing_place_tag.tagCount += 1
+            # isRepresentative는 현재 처리하지 않음
+            await session.flush()  # 변경 사항을 데이터베이스에 반영
+            print(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")
+            logger.info(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")            
+            return existing_place_tag
+        else:
+            # 새로운 PlaceTag를 생성하고 삽입합니다.
+            new_place_tag = PlaceTag(
+                placeId=place_id,
+                tagId=tag_id,
+                tagCount=1,  # 기본값으로 설정
+                isRepresentative=is_representative  # 현재는 사용하지 않음
+            )
+            session.add(new_place_tag)
+            await session.flush()  # 삽입을 데이터베이스에 반영
+            print(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")
+            logger.info(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")            
+            return new_place_tag
     except IntegrityError as e:
         await session.rollback()
         print(f"IntegrityError: {e.orig}")
+        logger.error(f"IntegrityError: {e.orig}")
         raise e
     except Exception as e:
         await session.rollback()
         print(f"Error inserting place_tag: {e}")
+        logger.error(f"Error inserting place_tag: {e}")
         raise e
 
 async def get_recent_place_tags_dataframe(session: AsyncSession) -> pd.DataFrame:
@@ -135,10 +180,11 @@ async def add_tags_and_place_tags(session: AsyncSession, tag_names: list[str], p
                 place_tags.append(place_tag)
             except IntegrityError as e:
                 print(f"IntegrityError for tag '{tag_name}' and place_id {place_id}: {e.orig}")
-                # 필요에 따라 예외를 다시 던지거나 계속 진행
+                logger.error(f"IntegrityError for tag '{tag_name}' and place_id {place_id}: {e.orig}")
                 raise e
             except Exception as e:
                 print(f"Unexpected error for tag '{tag_name}' and place_id {place_id}: {e}")
+                logger.error(f"Unexpected error for tag '{tag_name}' and place_id {place_id}: {e}")
                 raise e
     return place_tags
 

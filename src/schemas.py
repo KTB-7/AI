@@ -1,8 +1,7 @@
 # schemas.py
 
-from sqlalchemy import Column, BigInteger, String, ForeignKey, DateTime, Boolean, UniqueConstraint
+from sqlalchemy import Column, BigInteger, ForeignKey, String, DateTime, Boolean, UniqueConstraint, func
 from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy.sql import func
 
 Base = declarative_base()
 
@@ -26,12 +25,9 @@ class Place(Base):
 class Tag(Base):
     __tablename__ = 'Tag'
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    tagName = Column(String(255), nullable=True)
-    # createdAt = Column(DateTime, nullable=True, default=None)
-    # updatedAt = Column(DateTime, nullable=True, default=None)
-    createdAt = Column(DateTime, server_default=func.now(), nullable=False)
-    updatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
-    
+    tagName = Column(String(255), unique=True, nullable=True)
+    createdAt = Column(DateTime, nullable=False)
+    updatedAt = Column(DateTime, nullable=False)
     
     # Place_Tag와의 관계 설정
     place_tags = relationship("PlaceTag", back_populates="tag", cascade="all, delete-orphan")
@@ -43,6 +39,7 @@ class PlaceTag(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     placeId = Column(BigInteger, ForeignKey('Place.id', ondelete='CASCADE'), nullable=False)
     tagId = Column(BigInteger, ForeignKey('Tag.id', ondelete='CASCADE'), nullable=False)
+    tagCount = Column(BigInteger, default=1, nullable=False)
     isRepresentative = Column(Boolean, default=False)
     
     # 관계 설정
