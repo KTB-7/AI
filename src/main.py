@@ -8,7 +8,7 @@ import uvicorn
 
 from rec import recommendation_router
 from tag import tag_router
-from db_connect import get_db_session, get_recent_place_tags_dataframe
+from db_connect import get_db_session, get_recent_place_tags_dataframe, add_tags_and_place_tags
 app = FastAPI()
 
 app.include_router(tag_router)
@@ -21,10 +21,12 @@ def home():
 # 의존성 주입
 # https://fastapi.tiangolo.com/ko/tutorial/dependencies/#annotated
 
-@app.get("/recent-place-tags/")
-async def recent_place_tags(session: AsyncSession = Depends(get_db_session)):
-    df = await get_recent_place_tags_dataframe(session)
-    return df.to_dict(orient="records")
+# @app.get("/recent-place-tags/")
+# async def recent_place_tags(session: AsyncSession = Depends(get_db_session)):
+#     df = await get_recent_place_tags_dataframe(session)
+#     new_sess = get_db_session()
+#     tmp_tag = await add_tag_and_place_tag(new_sess, "test123", 1, False)
+#     return df.to_dict(orient="records")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=AI_IP, port=AI_PORT, reload=True)
