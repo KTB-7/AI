@@ -35,7 +35,7 @@ class Tag(Base):
 
 # Place_Tag ORM 모델
 class PlaceTag(Base):
-    __tablename__ = 'Place_Tag'
+    __tablename__ = 'Place-Tag'
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     placeId = Column(BigInteger, ForeignKey('Place.id', ondelete='CASCADE'), nullable=False)
     tagId = Column(BigInteger, ForeignKey('Tag.id', ondelete='CASCADE'), nullable=False)
