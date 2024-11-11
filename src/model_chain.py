@@ -9,10 +9,10 @@ from config import OPENAI_KEY
 os.environ['OPENAI_API_KEY'] = OPENAI_KEY
 
 class Tag_Response(BaseModel):
-    # tags: list[str]
+    tags: list[str]
     # index: int
-    positive_tags: list[str]
-    negative_tags: list[str]
+    # positive_tags: list[str]
+    # negative_tags: list[str]
 
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
@@ -37,8 +37,6 @@ def extract_review_hashtags(review_text):
 
                     출력방식: 
                     #해시태그1, #해시태그2, #해시태그3 ... 
-
-                    생성된 해시태그를 긍정적인 해시태그와 부정적인 해시태그로 나눠서 출력해줘.
                     
                     리뷰: {review_text}                    
                 """
@@ -61,8 +59,6 @@ def extract_image_hashtags(image_path):
                         "type": "text",
                         "text": """
                         다음 이미지를 한글로 설명해줘. 그리고 난 다음에는 사진에서 주요 특징이 보이는 키워드 5개를 '#키워드1, #키워드2' 형태로 출력시켜줘: 
-                        
-                        생성된 해시태그를 긍정적인 해시태그와 부정적인 해시태그로 나눠서 출력해줘.
                         """,
                     },
                     {

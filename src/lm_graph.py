@@ -37,7 +37,7 @@ from model_chain import extract_image_hashtags
 def sub_vision_node(state: overall_state) -> overall_state:
     vlm_tags = extract_image_hashtags(state["image_url"][0])
     print(vlm_tags)
-    return {"tags": vlm_tags["positive_tags"] + vlm_tags["negative_tags"]}
+    return {"tags": vlm_tags["tags"]}
 
 sub_vision_builder = StateGraph(overall_state)
 
@@ -53,7 +53,7 @@ from model_chain import extract_review_hashtags
 def sub_language_node(state: overall_state) -> overall_state:
     llm_tags = extract_review_hashtags(state["review_text"][0])
     print(llm_tags)
-    return {"tags": llm_tags["positive_tags"] + llm_tags["negative_tags"]}
+    return {"tags": llm_tags["tags"]}
 
 sub_language_builder = StateGraph(overall_state)
 
