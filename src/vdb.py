@@ -10,10 +10,10 @@ import uuid
 # from chromadb.utils.embedding_functions import EmbeddingFunction
 from sentence_transformers import SentenceTransformer
 
-from config import OPENAI_KEY
+from config import OPENAI_KEY, VDB_PATH
 os.environ['OPENAI_API_KEY'] = OPENAI_KEY
 
-chroma_client = chromadb.PersistentClient(path="/Users/yangtaegyu/test/AI/chroma_db")
+chroma_client = chromadb.PersistentClient(path=VDB_PATH)
 db = chroma_client.get_or_create_collection(
     name="hashtag_embeddings",
     metadata={"hnsw:space": "cosine"}
