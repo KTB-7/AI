@@ -1,18 +1,19 @@
 from pydantic import BaseModel
+import os
+from config import OPENAI_KEY
+os.environ['OPENAI_API_KEY'] = OPENAI_KEY
+
 from openai import OpenAI
 cli = OpenAI()
 
 import base64
 import json
-import os
-from config import OPENAI_KEY
-os.environ['OPENAI_API_KEY'] = OPENAI_KEY
+import urllib.parse
+
+from s3image import encode_image_from_s3
 
 class Tag_Response(BaseModel):
     tags: list[str]
-    # index: int
-    # positive_tags: list[str]
-    # negative_tags: list[str]
 
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
@@ -52,7 +53,9 @@ def extract_review_hashtags(review_text):
         return {'tags': []}
 
 def extract_image_hashtags(image_path):
-    base64_image = encode_image(image_path)
+    parsed_path = urllib.parse.urlparse(image_path)
+    path = parsed_path.path.lstrip('/')
+    base64_image = encode_image_from_s3(path)
     try:
         completion = cli.beta.chat.completions.parse(
             model="gpt-4o-mini",
@@ -82,3 +85,7 @@ def extract_image_hashtags(image_path):
     except cli.error.OpenAIError as e:
         print(f"OpenAI API 호출 실패: {e}")
         return {'tags': []}
+    
+
+# print(extract_image_hashtags("https://pinpung-s3.s3.ap-northeast-2.amazonaws.com/original-images/25"))
+# print(extract_review_hashtags("맛있어요!"))

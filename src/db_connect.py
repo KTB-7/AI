@@ -68,16 +68,16 @@ async def get_or_create_tag(session: AsyncSession, tag_name: str) -> Tag:
         session.add(tag)
         try:
             await session.flush()  # 데이터베이스에 반영
-            print(f"Inserted Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
+            # print(f"Inserted Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
             logger.info(f"Inserted Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")        
         except IntegrityError as e:
             await session.rollback()
-            print(f"IntegrityError while creating tag '{tag_name}': {e.orig}")
+            # print(f"IntegrityError while creating tag '{tag_name}': {e.orig}")
             logger.error(f"IntegrityError while creating tag '{tag_name}': {e.orig}")            
             raise e
         except Exception as e:
             await session.rollback()
-            print(f"Unexpected error while creating tag '{tag_name}': {e}")
+            # print(f"Unexpected error while creating tag '{tag_name}': {e}")
             logger.error(f"Unexpected error while creating tag '{tag_name}': {e}")            
             raise e
     else:
@@ -109,7 +109,7 @@ async def add_place_tag(session: AsyncSession, place_id: int, tag_id: int, is_re
             existing_place_tag.tagCount += 1
             # isRepresentative는 현재 처리하지 않음
             await session.flush()  # 변경 사항을 데이터베이스에 반영
-            print(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")
+            # print(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")
             logger.info(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")            
             return existing_place_tag
         else:
@@ -122,17 +122,17 @@ async def add_place_tag(session: AsyncSession, place_id: int, tag_id: int, is_re
             )
             session.add(new_place_tag)
             await session.flush()  # 삽입을 데이터베이스에 반영
-            print(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")
+            # print(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")
             logger.info(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")            
             return new_place_tag
     except IntegrityError as e:
         await session.rollback()
-        print(f"IntegrityError: {e.orig}")
+        # print(f"IntegrityError: {e.orig}")
         logger.error(f"IntegrityError: {e.orig}")
         raise e
     except Exception as e:
         await session.rollback()
-        print(f"Error inserting place_tag: {e}")
+        # print(f"Error inserting place_tag: {e}")
         logger.error(f"Error inserting place_tag: {e}")
         raise e
 
@@ -179,11 +179,11 @@ async def add_tags_and_place_tags(session: AsyncSession, tag_names: list[str], p
                 )
                 place_tags.append(place_tag)
             except IntegrityError as e:
-                print(f"IntegrityError for tag '{tag_name}' and place_id {place_id}: {e.orig}")
+                # print(f"IntegrityError for tag '{tag_name}' and place_id {place_id}: {e.orig}")
                 logger.error(f"IntegrityError for tag '{tag_name}' and place_id {place_id}: {e.orig}")
                 raise e
             except Exception as e:
-                print(f"Unexpected error for tag '{tag_name}' and place_id {place_id}: {e}")
+                # print(f"Unexpected error for tag '{tag_name}' and place_id {place_id}: {e}")
                 logger.error(f"Unexpected error for tag '{tag_name}' and place_id {place_id}: {e}")
                 raise e
     return place_tags
