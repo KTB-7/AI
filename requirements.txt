@@ -6,13 +6,15 @@ asttokens==2.4.1
 asyncpg==0.30.0
 backoff==2.2.1
 bcrypt==4.2.0
+boto3==1.35.58
+botocore==1.35.58
 build==1.2.2.post1
 cachetools==5.5.0
 certifi==2024.8.30
 cffi==1.17.1
 charset-normalizer==3.4.0
 chroma-hnswlib==0.7.6
-chromadb==0.5.18
+chromaDB==0.5.18
 click==8.1.7
 coloredlogs==15.0.1
 cryptography==43.0.3
@@ -47,6 +49,7 @@ itsdangerous==2.2.0
 jedi==0.19.1
 Jinja2==3.1.4
 jiter==0.6.1
+jmespath==1.0.1
 joblib==1.4.2
 jsonpatch==1.33
 jsonpointer==3.0.0
@@ -114,6 +117,7 @@ requests-oauthlib==2.0.0
 requests-toolbelt==1.0.0
 rich==13.9.2
 rsa==4.9
+s3transfer==0.10.3
 safetensors==0.4.5
 scikit-learn==1.5.2
 scipy==1.14.1
