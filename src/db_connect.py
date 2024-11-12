@@ -4,7 +4,7 @@ import asyncio
 import datetime
 import pandas as pd  # Pandas 임포트 추가
 import logging
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -86,13 +86,14 @@ async def get_or_create_tag(session: AsyncSession, tag_name: str) -> Tag:
 
 async def add_place_tag(session: AsyncSession, place_id: int, tag_id: int, is_representative: bool) -> PlaceTag:
     """
-    Inserts a new record into the Place_Tag table.
+    Inserts a new record into the Place_Tag table. Additionally, updates the isRepresentative
+    field for the top 5 tags with the highest tagCount for the given place_id.
 
     :param session: The active AsyncSession.
     :param place_id: The identifier of the place (Place.id).
     :param tag_id: The identifier of the tag (Tag.id).
     :param is_representative: Boolean indicating if the tag is representative for the place.
-    :return: The PlaceTag object that was inserted.
+    :return: The PlaceTag object that was inserted or updated.
     :raises IntegrityError: If the combination of place_id and tag_id violates the unique constraint or other integrity constraints are violated.
     """
     try:
@@ -105,15 +106,13 @@ async def add_place_tag(session: AsyncSession, place_id: int, tag_id: int, is_re
         existing_place_tag = result.scalar_one_or_none()
         
         if existing_place_tag:
-            # 기존 PlaceTag가 존재하면 tagCount를 1 증가시킵니다.
+            # 기존 PlaceTag가 존재하면 tagCount를 1 증가시킴
             existing_place_tag.tagCount += 1
-            # isRepresentative는 현재 처리하지 않음
-            await session.flush()  # 변경 사항을 데이터베이스에 반영
-            # print(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")
+            await session.flush()
             logger.info(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")            
-            return existing_place_tag
+            place_tag = existing_place_tag
         else:
-            # 새로운 PlaceTag를 생성하고 삽입합니다.
+            # 새로운 PlaceTag를 생성하고 삽입함
             new_place_tag = PlaceTag(
                 placeId=place_id,
                 tagId=tag_id,
@@ -121,19 +120,46 @@ async def add_place_tag(session: AsyncSession, place_id: int, tag_id: int, is_re
                 isRepresentative=is_representative  # 현재는 사용하지 않음
             )
             session.add(new_place_tag)
-            await session.flush()  # 삽입을 데이터베이스에 반영
-            # print(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")
+            await session.flush()
             logger.info(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")            
-            return new_place_tag
+            place_tag = new_place_tag
+
+        # 상위 5개 태그를 대표 태그로 설정
+        # 1. 상위 5개 태그 조회
+        top_tags_stmt = select(PlaceTag).where(
+            PlaceTag.placeId == place_id
+        ).order_by(PlaceTag.tagCount.desc()).limit(5)
+        top_tags_result = await session.execute(top_tags_stmt)
+        top_tags = top_tags_result.scalars().all()
+
+        # 2. 상위 5개 태그의 tagId를 추출
+        top_tag_ids = {tag.tagId for tag in top_tags}
+
+        # 3. 모든 태그의 isRepresentative를 False로 설정
+        reset_stmt = update(PlaceTag).where(
+            PlaceTag.placeId == place_id
+        ).values(isRepresentative=False)
+        await session.execute(reset_stmt)
+
+        # 4. 상위 5개 태그의 isRepresentative를 True로 설정
+        if top_tag_ids:
+            set_representative_stmt = update(PlaceTag).where(
+                PlaceTag.placeId == place_id,
+                PlaceTag.tagId.in_(top_tag_ids)
+            ).values(isRepresentative=True)
+            await session.execute(set_representative_stmt)
+            logger.info(f"Set isRepresentative=True for top tags: {top_tag_ids}")
+        
+        # Commit은 함수 외부에서 처리하도록 함
+        return place_tag
+
     except IntegrityError as e:
         await session.rollback()
-        # print(f"IntegrityError: {e.orig}")
         logger.error(f"IntegrityError: {e.orig}")
         raise e
     except Exception as e:
         await session.rollback()
-        # print(f"Error inserting place_tag: {e}")
-        logger.error(f"Error inserting place_tag: {e}")
+        logger.error(f"Error inserting/updating place_tag: {e}")
         raise e
 
 async def get_recent_place_tags_dataframe(session: AsyncSession) -> pd.DataFrame:
