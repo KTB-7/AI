@@ -17,3 +17,5 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "airoot")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "ai_db")
 
 VDB_PATH = os.getenv("VDB_PATH", "../vectordb")
+
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "pinpung-s3")
