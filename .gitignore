@@ -1,2 +1,8 @@
 .env
 db_operations.log
+src/todos.py
+*.png
+testtest.py
+dummy
+chroma_db
+vectordb
