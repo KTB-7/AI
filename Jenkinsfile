@@ -69,7 +69,7 @@ pipeline {
                     }
                 }
             }
-
+    }
     post {
         success {
             echo 'AI Deployment successful!'
