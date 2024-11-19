@@ -7,9 +7,9 @@ pipeline {
         TARGET_EC2 = 'ec2-user@ip-10-0-8-96.ap-northeast-2.compute.internal'
     }
     stages {
-        stage('Clone Repository') {
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/KTB-7/AI.git'
             }
         }
         stage('Build Docker Image') {
