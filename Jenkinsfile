@@ -16,7 +16,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker build -t ${ECR_REPO}:${DOCKER_IMAGE_TAG} .
+                    docker build --memory=2g -t ${ECR_REPO}:${DOCKER_IMAGE_TAG} .
                     """
                 }
             }
