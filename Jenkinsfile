@@ -46,14 +46,6 @@ pipeline {
                         // SSH를 통해 EC2에서 .env 파일 생성
                         sh """
                         ssh -o StrictHostKeyChecking=no ${TARGET_EC2} << EOF
-                            # src 디렉토리 권한 설정
-                            chmod -R 755 src
-                            echo "OPENAI_API_KEY=${openaiApiKey}" > src/.env
-                            echo "MYSQL_HOST=${mysqlHost}" >> src/.env
-                            echo "MYSQL_PORT=${mysqlPort}" >> src/.env
-                            echo "MYSQL_USER=${mysqlUser}" >> src/.env
-                            echo "MYSQL_PASSWORD=${mysqlPassword}" >> src/.env
-                            echo "MYSQL_DATABASE=${mysqlDatabase}" >> src/.env
 
                             # 기존 컨테이너 중지 및 제거
                             docker stop pinpung-ai-container || true
@@ -61,10 +53,16 @@ pipeline {
 
                             # 새 컨테이너 실행
                             docker pull ${ECR_REPO}:${DOCKER_IMAGE_TAG}
-                            docker run -d -p 8000:8000 --env-file src/.env --name pinpung-ai-container ${ECR_REPO}:${DOCKER_IMAGE_TAG}
 
-                            # .env 파일 제거 (선택 사항)
-                            rm -f src/.env
+                            # Docker 컨테이너 실행 시 환경변수 직접 전달
+                            docker run -d -p 8000:8000 \
+                                -e OPENAI_API_KEY=${openaiApiKey} \
+                                -e MYSQL_HOST=${mysqlHost} \
+                                -e MYSQL_PORT=${mysqlPort} \
+                                -e MYSQL_USER=${mysqlUser} \
+                                -e MYSQL_PASSWORD=${mysqlPassword} \
+                                -e MYSQL_DATABASE=${mysqlDatabase} \
+                                --name pinpung-ai-container ${ECR_REPO}:${DOCKER_IMAGE_TAG}
                         EOF
                         """
                         }
