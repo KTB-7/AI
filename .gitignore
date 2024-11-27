@@ -6,3 +6,4 @@ testtest.py
 dummy
 chroma_db
 vectordb
+__pycache__

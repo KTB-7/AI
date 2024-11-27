@@ -8,18 +8,19 @@ import chromadb
 import numpy as np
 import uuid
 # from chromadb.utils.embedding_functions import EmbeddingFunction
+from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
 from config import OPENAI_KEY, VDB_PATH
 os.environ['OPENAI_API_KEY'] = OPENAI_KEY
 
-chroma_client = chromadb.PersistentClient(path=VDB_PATH)
+chroma_client = chromadb.PersistentClient(path=VDB_PATH, settings=Settings(anonymized_telemetry=False))
 db = chroma_client.get_or_create_collection(
     name="hashtag_embeddings",
     metadata={"hnsw:space": "cosine"}
     )
 
-embedding_model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
+embedding_model = SentenceTransformer(model_name_or_path='snunlp/KR-SBERT-V40K-klueNLI-augSTS', device='cpu')
 
 class Tag_Response(BaseModel):
     tags: list[str]
@@ -81,7 +82,7 @@ def embed_hashtags(hashtags):
 def store_hashtags_in_db(hashtags, embeddings):
     for hashtag, embedding in zip(hashtags, embeddings):
         unique_id = str(uuid.uuid4())  # 각 해시태그에 대해 고유한 ID 생성
-        db.add(ids=[unique_id], documents=[hashtag], embeddings=[embedding], metadatas=[{"source": "new_review"}])
+        db.add(ids=[unique_id], documents=[hashtag], embeddings=[embedding], metadatas=[{"count": 1}])
 
 
 def find_similar_hashtag(new_embedding):
@@ -118,17 +119,17 @@ def find_similar_hashtag(new_embedding):
     return None, None
 
 
-def process_review(review_text):
-    hashtags = extract_review_hashtags(review_text)['tags']
-    embeddings = embed_hashtags(hashtags)
+# def process_review(review_text):
+#     hashtags = extract_review_hashtags(review_text)['tags']
+#     embeddings = embed_hashtags(hashtags)
 
-    for hashtag, embedding in zip(hashtags, embeddings):
-        similar_hashtag, distance = find_similar_hashtag(embedding)
-        if similar_hashtag and isinstance(distance, (float, int)) and distance < 0.4:
-            print(f"'{hashtag}' is similar to existing hashtag '{similar_hashtag}' and will be replaced.")
-        else:
-            store_hashtags_in_db([hashtag], [embedding])
-            print(f"Stored new hashtag: {hashtag}")
+#     for hashtag, embedding in zip(hashtags, embeddings):
+#         similar_hashtag, distance = find_similar_hashtag(embedding)
+#         if similar_hashtag and isinstance(distance, (float, int)) and distance < 0.4:
+#             print(f"'{hashtag}' is similar to existing hashtag '{similar_hashtag}' and will be replaced.")
+#         else:
+#             store_hashtags_in_db([hashtag], [embedding])
+#             print(f"Stored new hashtag: {hashtag}")
 
 def print_db_contents():
     all_documents = db.get(include=['documents', 'embeddings', 'metadatas'])
@@ -146,7 +147,9 @@ def tag_valid(hashtags : list[str]) -> list[str]:
 
     for hashtag, embedding in zip(hashtags, embeddings):
         similar_hashtag, distance = find_similar_hashtag(new_embedding=embedding)
-        if similar_hashtag and isinstance(distance, (float, int)) and distance < 0.4:
+        if similar_hashtag and isinstance(distance, (float, int)) and distance < 0.2:
+            new_tag.append(similar_hashtag[0])
+            # vdb +=count
             print(f"'{hashtag}' is similar to existing hashtag '{similar_hashtag}' and will be replaced.")
         else:
             store_hashtags_in_db(hashtags=[hashtag], embeddings=[embedding])
@@ -157,7 +160,8 @@ def tag_valid(hashtags : list[str]) -> list[str]:
 
 if __name__ == "__main__":
     example_review = "백다방 에스프레소 맛있어요. 직원들이 불친절해서 나빠요."
-    process_review(example_review)
+    # process_review(example_review)
+    tag_valid(["투썸플레이스", "프라푸치노", "카스테라", "녹차음료", "얼음", "유리잔", "초록색음료"])
     print_db_contents()
 
 
