@@ -46,6 +46,8 @@ pipeline {
                         // SSH를 통해 EC2에서 .env 파일 생성
                         sh """
                         ssh -o StrictHostKeyChecking=no ${TARGET_EC2} << EOF
+                            # src 디렉토리 권한 설정
+                            chmod -R 755 src
                             echo "OPENAI_API_KEY=${openaiApiKey}" > src/.env
                             echo "MYSQL_HOST=${mysqlHost}" >> src/.env
                             echo "MYSQL_PORT=${mysqlPort}" >> src/.env
