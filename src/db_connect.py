@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from config import MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
-from schemas import Place, Tag, PlaceTag 
+from schemas import Place, Tag, PlaceTag, PlaceVisit, UserTag
 
 # logging
 logging.basicConfig(
@@ -84,7 +84,56 @@ async def get_or_create_tag(session: AsyncSession, tag_name: str) -> Tag:
         logger.info(f"Retrieved existing Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
     return tag
 
-async def add_place_tag(session: AsyncSession, place_id: int, tag_id: int, is_representative: bool) -> PlaceTag:
+async def add_visit(
+    session: AsyncSession,
+    place_id: int,
+    age: float
+) -> PlaceVisit:
+    """
+    주어진 place_id와 age를 사용하여 placeVisit 테이블을 업데이트하거나 새 레코드를 생성합니다.
+
+    :param session: 활성화된 AsyncSession.
+    :param place_id: 장소의 ID (Place.id).
+    :param age: 방문자의 나이.
+    :return: 추가 또는 업데이트된 PlaceVisit 객체.
+    :raises IntegrityError: 외래 키 제약 조건 위반 등.
+    """
+    print("placeVisit________", place_id, age)
+    try:
+        # 기존 PlaceVisit 레코드 조회
+        result = await session.execute(
+            select(PlaceVisit).where(PlaceVisit.placeId == place_id)
+        )
+        place_visit = result.scalars().first()
+        # print("\n\n place_visit \n\n", place_visit.age, place_visit.visit)
+
+        if place_visit:
+            # 기존 방문 정보 업데이트
+            total_age = place_visit.age * place_visit.visit
+            place_visit.visit += 1
+            place_visit.age = (total_age + age) / place_visit.visit
+            logger.info(f"Updated PlaceVisit for place_id={place_id}: visit={place_visit.visit}, age={place_visit.age}")
+        else:
+            # 새로운 PlaceVisit 레코드 생성
+            place_visit = PlaceVisit(placeId=place_id, visit=1, age=age)
+            session.add(place_visit)
+            logger.info(f"Created new PlaceVisit for place_id={place_id}: visit=1, age={age}")
+
+        return place_visit
+
+    except IntegrityError as e:
+        logger.error(f"IntegrityError for place_id {place_id}: {e.orig}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error for place_id {place_id}: {e}")
+        raise e
+
+async def add_place_tag(
+    session: AsyncSession, 
+    place_id: int, 
+    tag_id: int, 
+    is_representative: bool
+) -> PlaceTag:
     """
     Inserts a new record into the Place_Tag table. Additionally, updates the isRepresentative
     field for the top 5 tags with the highest tagCount for the given place_id.
@@ -179,7 +228,12 @@ async def test_dataframe():
         df = await get_recent_place_tags_dataframe(session)
         print(df)
 
-async def add_tags_and_place_tags(session: AsyncSession, tag_names: list[str], place_id: int) -> list[PlaceTag]:
+async def add_tags_and_place_tags(
+    session: AsyncSession, 
+    tag_names: list[str], 
+    place_id: int,
+    age : int
+) -> list[PlaceTag]:
     """
     주어진 태그 이름 목록과 장소 ID를 사용하여 Tag와 PlaceTag 레코드를 추가합니다.
 
@@ -191,6 +245,8 @@ async def add_tags_and_place_tags(session: AsyncSession, tag_names: list[str], p
     """
     place_tags = []
     async with session.begin():  # 트랜잭션 시작
+        # PlaceVisit 에 추가
+        place_visit = await add_visit(session, place_id, age)
         for tag_name in tag_names:
             try:
                 # 태그 가져오기 또는 생성
@@ -214,6 +270,40 @@ async def add_tags_and_place_tags(session: AsyncSession, tag_names: list[str], p
                 raise e
     return place_tags
 
+async def add_user_tags(
+    session: AsyncSession, 
+    tag_names: list[str], 
+    user_id: int,
+) -> list[UserTag]:
+    new_user_tags = []
+    for tag_name in tag_names:
+        try:
+            tag = await get_or_create_tag(session, tag_name)
+            stmt = select(UserTag).where(
+                UserTag.userId == user_id,
+                UserTag.tagId == tag.id
+            )
+            result = await session.execute(stmt)
+            existing_user_tag = result.scalar_one_or_none()
+            if existing_user_tag:
+                existing_user_tag.tagCount += 1
+                await session.flush()
+                logger.info(f"Updated UserTag: userId={existing_user_tag.userId}, tagId={existing_user_tag.tagId}, tagCount={existing_user_tag.tagCount}")
+                new_user_tags.append(existing_user_tag)
+            else:
+                new_user_tag = UserTag(userId=user_id, tagId=tag.id, tagCount=1)
+                session.add(new_user_tag)
+                await session.flush()
+                await session.commit()
+                logger.info(f"Inserted UserTag: userId={new_user_tag.userId}, tagId={new_user_tag.tagId}, tagCount={new_user_tag.tagCount}")
+                new_user_tags.append(new_user_tag)
+        except IntegrityError as e:
+            logger.error(f"IntegrityError for usertag '{tag_name}' and user_id {user_id}: {e.orig}")
+            raise e
+        except Exception as e:
+            logger.error(f"Unexpected error for usertag '{tag_name}' and user_id {user_id}: {e}")
+            raise e
+    return new_user_tags
 
 async def main():
     async with AsyncSessionLocal() as session:

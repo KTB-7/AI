@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from lm_graph import graph
-from db_connect import add_tags_and_place_tags, get_db_session
+from db_connect import add_tags_and_place_tags, get_db_session, add_user_tags
 from vdb import tag_valid
 
 # 태그 생성 라우터
@@ -16,6 +16,8 @@ class Tag_Request(BaseModel):
     place_id: int
     review_text: str
     review_image_url: Optional[str] = None
+    user_id: int
+    age: int
 
 class Tag_Response(BaseModel):
     isGened: bool
@@ -45,7 +47,7 @@ async def create_tags(request: Tag_Request, session: AsyncSession = Depends(get_
 
     # 디비 업로드
     try:
-        place_tags = await add_tags_and_place_tags(session, tag_names=res, place_id=request.place_id)
+        place_tags = await add_tags_and_place_tags(session, tag_names=res, place_id=request.place_id, age=request.age)
         print(f"Inserted PlaceTags: {[pt.id for pt in place_tags]}")
     except IntegrityError as e:
         raise HTTPException(status_code=400, detail=f"Integrity error: {e.orig}")
@@ -54,5 +56,16 @@ async def create_tags(request: Tag_Request, session: AsyncSession = Depends(get_
     
     # 벡터 디비 업로드
     res = tag_valid(res)
+    
+    """
+    userTag 테이블 채우기 ( db_connect에 함수 추가 ),
+    """
+    try:
+        user_tags = await add_user_tags(session, user_id=request.user_id, tag_names=res)
+        print(f"Inserted UserTags: {[ut.id for ut in user_tags]}")
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail=f"Integrity error for usertag: {e.orig}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error for usertag: {e}")
 
     return Tag_Response(isGened=True)
