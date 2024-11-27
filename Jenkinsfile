@@ -45,7 +45,7 @@ pipeline {
 
                         // SSH를 통해 EC2에서 .env 파일 생성
                         sh """
-                        ssh -o StrictHostKeyChecking=no ${TARGET_EC2} << EOF
+                        timeout 300 ssh -t -o StrictHostKeyChecking=no ${TARGET_EC2} << EOF
 
                             # ECR 인증
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
@@ -66,13 +66,15 @@ pipeline {
                                 -e MYSQL_PASSWORD=${mysqlPassword} \
                                 -e MYSQL_DATABASE=${mysqlDatabase} \
                                 --name pinpung-ai-container ${ECR_REPO}:${DOCKER_IMAGE_TAG}
+                            
+                            echo "Deployment completed successfully."
+                            
                         EOF
                         """
                     }
                 }
             }
         }
-    }
     post {
         success {
             echo 'AI Deployment successful!'
