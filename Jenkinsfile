@@ -43,29 +43,28 @@ pipeline {
                         def mysqlPassword = sh(script: "aws ssm get-parameter --name /pinpung/DB_AI_PASSWORD --query Parameter.Value --output text --with-decryption --region ${AWS_REGION}", returnStdout: true).trim()
                         def mysqlDatabase = sh(script: "aws ssm get-parameter --name /pinpung/DB_NAME --query Parameter.Value --output text --region ${AWS_REGION}", returnStdout: true).trim()
 
-                        // SSH를 통해 EC2에서 .env 파일 생성
                         sh """
                         timeout 300 ssh -t -o StrictHostKeyChecking=no ${TARGET_EC2} <<EOF
-                        # ECR 인증
-                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
-                        # 기존 컨테이너 삭제
-                        docker stop pinpung-ai-container || true
-                        docker rm pinpung-ai-container || true
+# ECR 인증
+aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
+# 기존 컨테이너 삭제
+docker stop pinpung-ai-container || true
+docker rm pinpung-ai-container || true
 
                         # 새 컨테이너 실행
-                        docker pull ${ECR_REPO}:${DOCKER_IMAGE_TAG}
-                        docker run -d -p 8000:8000 \
-                            -e OPENAI_API_KEY=${openaiApiKey} \
-                            -e MYSQL_HOST=${mysqlHost} \
-                            -e MYSQL_PORT=${mysqlPort} \
-                            -e MYSQL_USER=${mysqlUser} \
-                            -e MYSQL_PASSWORD=${mysqlPassword} \
-                            -e MYSQL_DATABASE=${mysqlDatabase} \
-                            --memory="512m" \
-                            --memory-swap="3g" \
-                            --name pinpung-ai-container ${ECR_REPO}:${DOCKER_IMAGE_TAG}
-                        echo "Deployment completed successfully."
-                        EOF
+docker pull ${ECR_REPO}:${DOCKER_IMAGE_TAG}
+docker run -d -p 8000:8000 \
+    -e OPENAI_API_KEY=${openaiApiKey} \
+    -e MYSQL_HOST=${mysqlHost} \
+    -e MYSQL_PORT=${mysqlPort} \
+    -e MYSQL_USER=${mysqlUser} \
+    -e MYSQL_PASSWORD=${mysqlPassword} \
+    -e MYSQL_DATABASE=${mysqlDatabase} \
+    --memory="512m" \
+    --memory-swap="3g" \
+    --name pinpung-ai-container ${ECR_REPO}:${DOCKER_IMAGE_TAG}
+echo "Deployment completed successfully."
+EOF
                         """
                     }
                 }
