@@ -65,6 +65,8 @@ pipeline {
                                 -e MYSQL_USER=${mysqlUser} \
                                 -e MYSQL_PASSWORD=${mysqlPassword} \
                                 -e MYSQL_DATABASE=${mysqlDatabase} \
+                                --memory="512m" \
+                                --memory-swap="3g" \
                                 --name pinpung-ai-container ${ECR_REPO}:${DOCKER_IMAGE_TAG}
                             
                             echo "Deployment completed successfully."
