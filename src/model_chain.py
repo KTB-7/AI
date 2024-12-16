@@ -15,6 +15,11 @@ from s3image import encode_image_from_s3
 class Tag_Response(BaseModel):
     tags: list[str]
 
+class Tag_Score_Response(BaseModel):
+    positive_tags: list[str]
+    neutral_tags: list[str]
+    negative_tags: list[str]
+
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
@@ -41,13 +46,13 @@ def extract_review_hashtags(review_text):
                     """
                 }
             ],
-            response_format=Tag_Response
+            response_format=Tag_Score_Response
         )
         res = json.loads(completion.choices[0].message.content)
         return res
     except cli.error.OpenAIError as e:
         print(f"OpenAI API 호출 실패: {e}")
-        return {'tags': []}
+        return {'positive_tags': [], 'neutral_tags': [], 'negative_tags': []}
 
 def extract_image_hashtags(image_path):
     parsed_path = urllib.parse.urlparse(image_path)
@@ -65,17 +70,13 @@ def extract_image_hashtags(image_path):
                             "text": """
                             텍스트는 카페에 대해서 사용자가 남긴 이미지야. 해당 리뷰를 분석하여 각 리뷰에서 3개에서 5개의 주요 특징을 뽑아 해시태그로 만들어줘. 
                             주의사항
-                            1. 해시태그를 출력할 때 가게 이름(ex. 스타벅스, 블루보틀)이나 #카페 는 들어가지 않아야해.
+                            1. 해시태그를 출력할 때 가게 이름(ex. 스타벅스, 블루보틀)이나 카페 는 들어가지 않아야해.
                             2. 이미지에서 확인할 수 있는 것만 해시태그로 만들어줘. 추론하면 안돼.
                             3. 맛에 관련된 부분도 추론이기 때문에 만들면 안돼. (ex. 달콤한 맛)
-                            4. 사진에서 볼 수 있는 디저트가 있다면 해시태그로 만들어줘. (ex. #아이스 아메리카노, #라떼, #케이크, #쿠키 등)
-                            5. 의자 사진이 많이 보인다면 이를 토대로 #자리많음, #자리없음을 해시태그로 뽑아줘.
+                            4. 사진에서 볼 수 있는 디저트가 있다면 해시태그로 만들어줘. (ex. 아이스 아메리카노, 라떼, 케이크, 쿠키 등)
+                            5. 의자 사진이 많이 보인다면 이를 토대로 자리많음, 자리없음을 해시태그로 뽑아줘.
                             6. 음식사진만 있다면 혼잡도를 판단할 수 없어.
                             7. 인테리어가 전체적으로 어떤 느낌인지 확인할 수 있다면 해시태그로 뽑아줘.
-
-
-                            출력방식: 앞에 #을 붙여야해.
-                            #해시태그1, #해시태그2, #해시태그3 ... 
                             """,
                         },
                         {
@@ -87,13 +88,13 @@ def extract_image_hashtags(image_path):
                     ],
                 }
             ],
-            response_format=Tag_Response
+            response_format=Tag_Score_Response
         )
         res = json.loads(completion.choices[0].message.content)
         return res
     except cli.error.OpenAIError as e:
         print(f"OpenAI API 호출 실패: {e}")
-        return {'tags': []}
+        return {'positive_tags': [], 'neutral_tags': [], 'negative_tags': []}
     
 
 # print(extract_image_hashtags("https://pinpung-s3.s3.ap-northeast-2.amazonaws.com/original-images/25"))

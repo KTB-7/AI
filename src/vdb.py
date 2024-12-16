@@ -1,12 +1,10 @@
 from openai import OpenAI
-import openai
 import base64
-import json
 import os
 from pydantic import BaseModel
 import chromadb
-import numpy as np
 import uuid
+from typing import List, Tuple
 # from chromadb.utils.embedding_functions import EmbeddingFunction
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
@@ -29,40 +27,6 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-# def extract_review_hashtags(review_text):
-#     try:
-#         completion = openai.beta.chat.completions.parse(
-#             model="gpt-4o-mini",
-#             messages=[
-#                 {
-#                     "role": "user",
-#                     "content": f"""
-#                         텍스트는 카페에 대해서 사용자가 남긴 리뷰야. 해당 리뷰를 분석하여 각 리뷰에서 3개에서 5개의 주요 특징을 뽑아 해시태그로 만들어줘. 해시태그는 리뷰에서 중요한 키워드, 감정(긍정적/부정적), 서비스의 질 등을 반영하여 작성해줘. 
-#                         주의사항
-#                         1. 해시태그를 출력할 때 가게 이름(ex. 스타벅스, 블루보틀)은 들어가지 않게 해줘.
-#                         2. 메뉴 이름은 그 자체로 명사로 뽑아내줘.
-#                         3. 만약 형용사/부사와 명사가 같이 나온다면 형용사/부사 + 명사 순으로 뽑아내줘. (ex. 친절한 서비스, 불친절한 직원)
-#                         출력방식은 다른 부가 설명 없이 깔끔하게 다음과 같아:
-#                         4. 띄어쓰기가 필요한 부분은 띄어쓰기 해줘.
-#                         5. 리뷰에 있는 단어만 추출해줘.
-#                         6. 메뉴와 관련된 문장이 있으면 메뉴이름 + 특징 으로 뽑아줘. (ex. 밀크 크레이프 케익은 빌리엔젤이 최고! -> #밀크 크레이프 케익 최고)
-
-#                         출력방식: 앞에 #을 붙여야해.
-#                         #해시태그1, #해시태그2, #해시태그3 ... 
-                        
-#                         리뷰: {review_text}                    
-#                     """
-#                 }
-#             ],
-#             response_format=Tag_Response
-#         )
-#         res = json.loads(completion.choices[0].message.content)
-#         return res
-#     except openai.error.OpenAIError as e:
-#         print(f"OpenAI API 호출 실패: {e}")
-#         return {'tags': []}
-
-
 def embed_hashtags(hashtags):
     if not hashtags:
         print("No hashtags to embed.")
@@ -79,90 +43,106 @@ def embed_hashtags(hashtags):
         return []
 
 
-def store_hashtags_in_db(hashtags, embeddings):
+def store_hashtags_in_db(hashtags, embeddings, sentiment):
     for hashtag, embedding in zip(hashtags, embeddings):
         unique_id = str(uuid.uuid4())  # 각 해시태그에 대해 고유한 ID 생성
-        db.add(ids=[unique_id], documents=[hashtag], embeddings=[embedding], metadatas=[{"count": 1}])
+        db.add(ids=[unique_id], documents=[hashtag], embeddings=[embedding], metadatas=[{"count": 1, "sentiment": sentiment}])
 
 
 def find_similar_hashtag(new_embedding):
-    # DB에서 모든 해시태그 임베딩 가져오기
-    # all_documents = db.get(include=['embeddings', 'documents', 'metadatas'])
-    # existing_embeddings = all_documents['embeddings']
-    # existing_documents = all_documents['documents']
-
-    # if len(existing_embeddings) == 0: #db 비어있는 경우
-    #     return None, None
-
     # 새로운 임베딩과 기존 임베딩들 간의 유사도 계산
-    results = db.query(query_embeddings=[new_embedding], n_results=5) # n_results=len(existing_documents))
+    results = db.query(query_embeddings=[new_embedding], n_results=1)
     print(db.count())
     if db.count() == 0:
-        return None, None
+        return None, None, None, None, None
     print("유사도 계산 결과:")
     
     # 모든 유사도 결과를 확인
     min_distance = float('inf')
     most_similar_document = None
-    for idx, (document, distance) in enumerate(zip(results['documents'], results['distances'])):
-        # distance가 리스트인 경우 첫 번째 요소 사용
-        if isinstance(distance, list):
-            distance = distance[0]
-        print(f"Document: '{document}', Distance: {distance}")
-        if distance < min_distance:
-            min_distance = distance
-            most_similar_document = document
+    most_similar_id = None
+    most_similar_count = None
+    
+    print(results)
+    print(results['metadatas'][0])
+    min_distance = results['distances'][0]
+    most_similar_document = results['documents'][0]
+    most_similar_id = results['ids'][0]
+    most_similar_count = results['metadatas'][0][0]['count']
+    most_similar_sentiment = results['metadatas'][0][0]['sentiment']
 
     # 가장 유사한 해시태그 반환
     if most_similar_document is not None:
-        return most_similar_document, min_distance
-    return None, None
-
-
-# def process_review(review_text):
-#     hashtags = extract_review_hashtags(review_text)['tags']
-#     embeddings = embed_hashtags(hashtags)
-
-#     for hashtag, embedding in zip(hashtags, embeddings):
-#         similar_hashtag, distance = find_similar_hashtag(embedding)
-#         if similar_hashtag and isinstance(distance, (float, int)) and distance < 0.4:
-#             print(f"'{hashtag}' is similar to existing hashtag '{similar_hashtag}' and will be replaced.")
-#         else:
-#             store_hashtags_in_db([hashtag], [embedding])
-#             print(f"Stored new hashtag: {hashtag}")
+        return most_similar_id, most_similar_document, min_distance, most_similar_count, most_similar_sentiment
+    return None, None, None, None, None
 
 def print_db_contents():
     all_documents = db.get(include=['documents', 'embeddings', 'metadatas'])
     if all_documents and len(all_documents['documents']) > 0:
         print("DB에 저장된 데이터:")
-        for doc, meta in zip(all_documents['documents'], all_documents['metadatas']):
-            print(f"Document: {doc}, Metadata: {meta}")
+        for doc, meta, id in zip(all_documents['documents'], all_documents['metadatas'], all_documents['ids']):
+            print(f"Document: {doc}, Metadata: {meta}, Id: {id}")
     else:
         print("DB가 비어있습니다.")
 
-def tag_valid(hashtags : list[str]) -> list[str]:
+def tag_valid(
+    hashtags : list[str],
+    sentiment : int
+) -> list[str]:
     embeddings = embed_hashtags(hashtags=hashtags)
 
     new_tag = []
 
     for hashtag, embedding in zip(hashtags, embeddings):
-        similar_hashtag, distance = find_similar_hashtag(new_embedding=embedding)
-        if similar_hashtag and isinstance(distance, (float, int)) and distance < 0.2:
+        similar_id, similar_hashtag, distance, similar_count, similar_sentiment = find_similar_hashtag(new_embedding=embedding)
+        print(f"for문 안 id: {similar_id}, distance: {distance}, count: {similar_count}")
+        if similar_hashtag and distance[0] < 0.2:
             new_tag.append(similar_hashtag[0])
             # vdb +=count
+            db.update(ids=similar_id, metadatas=[{"count": int(similar_count) + 1, "sentiment": similar_sentiment}])
             print(f"'{hashtag}' is similar to existing hashtag '{similar_hashtag}' and will be replaced.")
         else:
-            store_hashtags_in_db(hashtags=[hashtag], embeddings=[embedding])
+            store_hashtags_in_db(hashtags=[hashtag], embeddings=[embedding], sentiment=sentiment)
             new_tag.append(hashtag)
             print(f"Stored new hashtag: {hashtag}")
 
     return new_tag
 
+def get_tag_sentiment(
+    tag_ids = list[str]
+) -> dict[str, int]:
+    sentiments = {}
+    embeddings = embed_hashtags(hashtags=tag_ids)
+    for tag, embedding in zip(tag_ids, embeddings):
+        db_results = db.query(query_embeddings=[embedding], n_results=1)
+        sentiments[tag] = db_results['metadatas'][0][0]['sentiment']
+        print(f"Sentiment for tag '{tag}': {db_results['documents'][0]} {sentiments[tag]}")
+    
+    return sentiments
+
+def get_best_tags() -> list[str]:
+    docus = db.get(where={"count": {"$gt": 1}}, include=['documents', 'metadatas'])
+    
+    combined = sorted(zip(docus['documents'], [meta['count'] for meta in docus['metadatas']]), key=lambda x: x[1], reverse=True)
+    
+    ret = [doc for doc, count in combined]
+
+    return ret
+
 if __name__ == "__main__":
     example_review = "백다방 에스프레소 맛있어요. 직원들이 불친절해서 나빠요."
     # process_review(example_review)
-    tag_valid(["투썸플레이스", "프라푸치노", "카스테라", "녹차음료", "얼음", "유리잔", "초록색음료"])
-    print_db_contents()
+    # tag_valid(["매우 행복함"], 1)
+
+    # print_db_contents()
+    # tag_valid(["케이크 맛집"], 1)
+    # tag_valid(["아이스아메리카노 맛집"], 1)
+    # tag_valid(["녹차 좋아"], 1)
+    # tag_valid(["케이크 맛집"], 1)
+    # tag_valid(["아이스아메리카노 맛집"], 1)
+    # tag_valid(["녹차 좋아"], 1)
+    temp = get_best_tags()
+    print(temp)
 
 
 """

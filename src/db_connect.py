@@ -2,15 +2,17 @@
 
 import asyncio
 import datetime
-import pandas as pd  # Pandas 임포트 추가
+import pandas as pd
 import logging
-from sqlalchemy import select, update
+from collections import defaultdict
+from typing import List, Tuple, Union
+from sqlalchemy import select, update, func
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
-
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from config import MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
-from schemas import Place, Tag, PlaceTag, PlaceVisit, UserTag
+from schemas import Place, Tag, User, PlaceTag, PlaceVisit, UserPlaceTag, UserMenu, UserActivity
+from vdb import get_tag_sentiment, get_best_tags
 
 # logging
 logging.basicConfig(
@@ -87,7 +89,7 @@ async def get_or_create_tag(session: AsyncSession, tag_name: str) -> Tag:
 async def add_visit(
     session: AsyncSession,
     place_id: int,
-    age: float
+    user_id: int
 ) -> PlaceVisit:
     """
     주어진 place_id와 age를 사용하여 placeVisit 테이블을 업데이트하거나 새 레코드를 생성합니다.
@@ -98,9 +100,13 @@ async def add_visit(
     :return: 추가 또는 업데이트된 PlaceVisit 객체.
     :raises IntegrityError: 외래 키 제약 조건 위반 등.
     """
-    print("placeVisit________", place_id, age)
     try:
         # 기존 PlaceVisit 레코드 조회
+        tmp = await session.execute(
+            select(User).where(User.id == user_id)
+        )
+        age = tmp.scalars().first().age
+        
         result = await session.execute(
             select(PlaceVisit).where(PlaceVisit.placeId == place_id)
         )
@@ -211,28 +217,11 @@ async def add_place_tag(
         logger.error(f"Error inserting/updating place_tag: {e}")
         raise e
 
-async def get_recent_place_tags_dataframe(session: AsyncSession) -> pd.DataFrame:
-    # 필요한 컬럼만 선택
-    stmt = select(PlaceTag.placeId, PlaceTag.tagId, PlaceTag.isRepresentative, PlaceTag.id)
-    result = await session.execute(stmt)
-    data = result.fetchall()  # List of Row objects
-
-    # DataFrame 생성
-    df = pd.DataFrame(data, columns=['placeId', 'tagId', 'isRepresentative', 'id'])
-    
-    return df
-
-# 테스트 함수
-async def test_dataframe():
-    async with AsyncSessionLocal() as session:
-        df = await get_recent_place_tags_dataframe(session)
-        print(df)
-
 async def add_tags_and_place_tags(
     session: AsyncSession, 
     tag_names: list[str], 
     place_id: int,
-    age : int
+    user_id : int
 ) -> list[PlaceTag]:
     """
     주어진 태그 이름 목록과 장소 ID를 사용하여 Tag와 PlaceTag 레코드를 추가합니다.
@@ -246,7 +235,7 @@ async def add_tags_and_place_tags(
     place_tags = []
     async with session.begin():  # 트랜잭션 시작
         # PlaceVisit 에 추가
-        place_visit = await add_visit(session, place_id, age)
+        place_visit = await add_visit(session, place_id, user_id)
         for tag_name in tag_names:
             try:
                 # 태그 가져오기 또는 생성
@@ -272,36 +261,35 @@ async def add_tags_and_place_tags(
 
 async def add_user_tags(
     session: AsyncSession, 
-    tag_names: list[str], 
     user_id: int,
-) -> list[UserTag]:
+    place_id: int,
+    tag_names: list[str]
+) -> list[UserPlaceTag]:
     new_user_tags = []
     for tag_name in tag_names:
         try:
             tag = await get_or_create_tag(session, tag_name)
-            stmt = select(UserTag).where(
-                UserTag.userId == user_id,
-                UserTag.tagId == tag.id
+            stmt = select(UserPlaceTag).where(
+                UserPlaceTag.userId == user_id,
+                UserPlaceTag.tagId == tag.id
             )
             result = await session.execute(stmt)
             existing_user_tag = result.scalar_one_or_none()
             if existing_user_tag:
-                existing_user_tag.tagCount += 1
-                await session.flush()
-                logger.info(f"Updated UserTag: userId={existing_user_tag.userId}, tagId={existing_user_tag.tagId}, tagCount={existing_user_tag.tagCount}")
+                logger.info(f"Updated UserPlaceTag: userId={existing_user_tag.userId}, placeId={existing_user_tag.placeId}, tagId={existing_user_tag.tagId}")
                 new_user_tags.append(existing_user_tag)
             else:
-                new_user_tag = UserTag(userId=user_id, tagId=tag.id, tagCount=1)
+                new_user_tag = UserPlaceTag(userId=user_id, placeId=place_id ,tagId=tag.id)
                 session.add(new_user_tag)
                 await session.flush()
                 await session.commit()
-                logger.info(f"Inserted UserTag: userId={new_user_tag.userId}, tagId={new_user_tag.tagId}, tagCount={new_user_tag.tagCount}")
+                logger.info(f"Inserted UserPlaceTag: userId={new_user_tag.userId}, placeId={new_user_tag.placeId}, tagId={new_user_tag.tagId}")
                 new_user_tags.append(new_user_tag)
         except IntegrityError as e:
-            logger.error(f"IntegrityError for usertag '{tag_name}' and user_id {user_id}: {e.orig}")
+            logger.error(f"IntegrityError for userplacetag '{tag_name}' and user_id {user_id}: {e.orig}")
             raise e
         except Exception as e:
-            logger.error(f"Unexpected error for usertag '{tag_name}' and user_id {user_id}: {e}")
+            logger.error(f"Unexpected error for userplacetag '{tag_name}' and user_id {user_id}: {e}")
             raise e
     return new_user_tags
 
@@ -319,9 +307,195 @@ async def main():
     # 엔진 종료(dispose) 추가
     await async_engine.dispose()
 
-if __name__ == "__main__":
-    # To test the dataframe function, uncomment the line below:
-    # asyncio.run(test_dataframe())
+async def get_top_tags_vdb(
+    session: AsyncSession
+) -> List[Union[int, str]]:
+    stmt = select(Tag.id).where(Tag.tagName.in_(get_best_tags()))
+    result = await session.execute(stmt)
+    top_tags = result.scalars().all()
+
+    return top_tags
+
+async def get_top_tags(
+    session: AsyncSession, 
+    user_id: int
+) -> List[Union[int, str]]:
+    subquery = (
+        select(
+            UserPlaceTag.tagId,
+            func.count(UserPlaceTag.tagId).label('tag_count')
+        )
+        .where(UserPlaceTag.userId == user_id)
+        .group_by(UserPlaceTag.tagId)
+        .subquery()
+    )
+
+    stmt = (
+        select(subquery.c.tagId)
+        .order_by(subquery.c.tag_count.desc())
+        .limit(10)
+    )
+
+    result = await session.execute(stmt)
+    top_tags = result.scalars().all()
+    print("top tags", top_tags)
+
+    return top_tags
+
+async def get_tag_feature(
+    session: AsyncSession,
+    user_id: int,
+    place_ids: List[int]
+) -> List[Union[int, str]]:
+    stmt_usertag = select(UserPlaceTag.tagId).where(UserPlaceTag.userId == user_id)
+    stmt_placetag = select(PlaceTag.tagId).where(
+        PlaceTag.placeId.in_(place_ids),
+        PlaceTag.isRepresentative == True
+    )
+    stmt_besttag = select(Tag.id).where(Tag.tagName.in_(get_best_tags()))
     
-    # To test adding a tag and place_tag, run the main function
+    usertag_result = await session.execute(stmt_usertag)
+    placetag_result = await session.execute(stmt_placetag)
+    besttag_result = await session.execute(stmt_besttag)
+    
+    combined_tags = list(set(usertag_result.scalars().all()) | set(placetag_result.scalars().all()) | set(besttag_result.scalars().all()))
+    print("combined tags",combined_tags)
+    stmt_taguser = select(UserPlaceTag.tagId, UserPlaceTag.userId).where(UserPlaceTag.tagId.in_(combined_tags))
+    taguser_result = await session.execute(stmt_taguser)
+
+    rows = taguser_result.fetchall()
+    print("taguser result", rows)
+
+    return rows
+
+async def get_tagplace_interactions(
+    session: AsyncSession,
+    user_id: int,
+    place_ids: List[int]
+) -> List[Union[int, str]]:
+    stmt_score = select(UserPlaceTag.tagId, UserPlaceTag.placeId, UserPlaceTag.userId).where(
+        UserPlaceTag.userId == user_id,
+        UserPlaceTag.placeId.in_(place_ids)
+    )
+    res_score = await session.execute(stmt_score)
+    score = res_score.fetchall()
+
+    count_sum = defaultdict(int)
+    for tag_id, place_id, user_id in score:
+        count_sum[(tag_id, place_id)] += 1
+
+    summed_score = []
+    for (tag_id, place_id), count in count_sum.items():
+        summed_score.append([tag_id, place_id, count])
+
+    return summed_score        
+
+async def make_frame(
+    session: AsyncSession,
+    user_id: int,
+    place_ids: List[int]
+) -> Tuple[List[int], List[Union[int, str]]]:
+    print(user_id, place_ids)
+    stmt_userframe = select(UserPlaceTag.userId).where(UserPlaceTag.placeId.in_(place_ids)).distinct()
+    res_userframe = await session.execute(stmt_userframe)
+    user_list = res_userframe.scalars().all()
+    print("user_list", user_list)
+    stmt_placeframe = select(UserPlaceTag.placeId).where(UserPlaceTag.userId.in_(user_list)).distinct()
+    res_placeframe = await session.execute(stmt_placeframe)
+    place_list = res_placeframe.scalars().all()
+    print("place_list", place_list)
+    return user_list, place_list
+
+async def get_user_info(
+    session: AsyncSession,
+    user_ids: List[int]
+) -> List[Union[int, str]]:
+    stmt_userage = select(User.id, User.age).where(User.id.in_(user_ids))
+    stmt_usermenu = select(UserMenu.userId, UserMenu.menuName).where(UserMenu.userId.in_(user_ids))
+    stmt_useractivity = select(UserActivity.userId, UserActivity.activityName).where(UserActivity.userId.in_(user_ids))
+
+    userage_result = await session.execute(stmt_userage)
+    usermenu_result = await session.execute(stmt_usermenu)
+    useractivity_result = await session.execute(stmt_useractivity)
+
+    userage = userage_result.fetchall()
+    usermenu = usermenu_result.fetchall()
+    useractivity = useractivity_result.fetchall()
+    print("userage", userage)
+    print("usermenu", usermenu)
+    print("useractivity", useractivity)
+    userfeature = userage + usermenu + useractivity
+
+    return userfeature
+
+async def get_place_info(
+    session: AsyncSession,
+    place_ids: List[int]
+) -> List[Union[int, str]]:
+    stmt_placereptag = select(PlaceTag.placeId, PlaceTag.tagId).where(PlaceTag.placeId.in_(place_ids), PlaceTag.isRepresentative == True)
+    ### tagid로 feature를 비교해도 되지 않을까? 시각적으로 로그 확인하기에는 tagname이 좋겠지만, db query 시간 줄여보자.
+    stmt_placeavgage = select(PlaceVisit.placeId, PlaceVisit.age).where(PlaceVisit.placeId.in_(place_ids))
+
+    placereptag_result = await session.execute(stmt_placereptag)
+    placeavgage_result = await session.execute(stmt_placeavgage)
+
+    placereptag = placereptag_result.fetchall()
+    placeavgage = placeavgage_result.fetchall()
+    placeavgage = [(place_id, round(age, 1)) for place_id, age in placeavgage]
+
+    print("placereptag", placereptag)
+    print("placeavgage", placeavgage)
+
+    placefeature = placereptag + placeavgage
+
+    return placefeature
+
+async def get_userplace_interactions(
+    session: AsyncSession,
+    user_ids: List[int],
+    place_ids: List[int]
+) -> List[Union[int, str]]:
+    stmt_tagsentiment = select(UserPlaceTag.tagId).where(
+        UserPlaceTag.userId.in_(user_ids),
+        UserPlaceTag.placeId.in_(place_ids)
+    ).distinct()
+    tagsentiment_result = await session.execute(stmt_tagsentiment)
+    tagsentiment = tagsentiment_result.scalars().all()
+    sentiment_map = get_tag_sentiment(tagsentiment)
+    print("sentiment_map", sentiment_map)
+    
+    stmt_interactions = select(UserPlaceTag.userId, UserPlaceTag.placeId, UserPlaceTag.tagId).where(
+        UserPlaceTag.userId.in_(user_ids),
+        UserPlaceTag.placeId.in_(place_ids)
+    )
+    interactions_result = await session.execute(stmt_interactions)
+    interactions = interactions_result.fetchall()
+    print("interactions", interactions)
+    
+    processed_interactions = []
+    for user_id, place_id, tag_id in interactions:
+        print("interaction to map",user_id, place_id, tag_id, sentiment_map.get(tag_id))
+        processed_interactions.append([user_id, place_id, sentiment_map.get(tag_id, 0)])  # 기본값 0 설정
+    
+    sentiment_sum = defaultdict(float)
+    sentiment_count = defaultdict(int)
+    
+    for user_id, place_id, sentiment in processed_interactions:
+        key = (user_id, place_id)
+        sentiment_sum[key] += sentiment
+        sentiment_count[key] += 1
+    
+    averaged_interactions = [
+        (user_id, place_id, round(sentiment_sum[key] / sentiment_count[key], 3))
+        for key, user_id, place_id in [
+            (key, key[0], key[1]) for key in sentiment_sum
+        ]
+    ]
+    
+    print("averaged_interactions", averaged_interactions)
+    
+    
+    return averaged_interactions
+
+if __name__ == "__main__":
     asyncio.run(main())

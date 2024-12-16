@@ -19,6 +19,14 @@ class overall_state(TypedDict):
     review_text: Annotated[list[str], operator.add]
     tags: Annotated[list[str], operator.add]
 
+class overall_state(TypedDict):
+    topic: Annotated[list[str], operator.add]
+    image_url: Annotated[list[str], operator.add]
+    review_text: Annotated[list[str], operator.add]
+    positive_tags: Annotated[list[str], operator.add]
+    neutral_tags: Annotated[list[str], operator.add]
+    negative_tags: Annotated[list[str], operator.add]
+
 # ------------------------------
 # tmp state
 def tmp(state : overall_state):
@@ -37,7 +45,7 @@ from model_chain import extract_image_hashtags
 def sub_vision_node(state: overall_state) -> overall_state:
     vlm_tags = extract_image_hashtags(state["image_url"][0])
     print(vlm_tags)
-    return {"tags": vlm_tags["tags"]}
+    return {"positive_tags": vlm_tags["positive_tags"], "neutral_tags": vlm_tags["neutral_tags"], "negative_tags": vlm_tags["negative_tags"]}
 
 sub_vision_builder = StateGraph(overall_state)
 
@@ -53,7 +61,7 @@ from model_chain import extract_review_hashtags
 def sub_language_node(state: overall_state) -> overall_state:
     llm_tags = extract_review_hashtags(state["review_text"][0])
     print(llm_tags)
-    return {"tags": llm_tags["tags"]}
+    return {"positive_tags": llm_tags["positive_tags"], "neutral_tags": llm_tags["neutral_tags"], "negative_tags": llm_tags["negative_tags"]}
 
 sub_language_builder = StateGraph(overall_state)
 
