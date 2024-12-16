@@ -89,8 +89,6 @@ for user_idx, user_row in users_df.iterrows():
             })
 # 상호작용 데이터프레임 생성
 interactions_df = pd.DataFrame(interactions_data)
-print("상호작용 데이터프레임:")
-print(interactions_df)
 
 dataset = Dataset()
 
@@ -136,12 +134,17 @@ model.fit(
 
 # 추천 생성
 def recommend_cafes(model, dataset, user_id, cafes_df, user_features_matrix, item_features_matrix):
-    user_internal_id = dataset.mapping()[0][user_id]
+    try:
+        user_internal_id = dataset.mapping()[0][user_id]
+    except KeyError:
+        print(f"User ID {user_id} not found in the dataset.")
+        return []
+
+    # 모든 아이템의 내부 ID 가져오기
     all_item_ids = np.arange(dataset.interactions_shape()[1])
 
     # 이미 상호작용한 아이템 가져오기
     interacted_items = interactions_df[interactions_df['user_id'] == user_id]['place_id'].tolist()
-    interacted_item_internal_ids = [dataset.mapping()[2][item] for item in interacted_items]
 
     # 모델을 사용하여 모든 아이템에 대한 점수 예측
     scores = model.predict(
@@ -158,18 +161,17 @@ def recommend_cafes(model, dataset, user_id, cafes_df, user_features_matrix, ite
     })
 
     # 이미 상호작용한 아이템 제외
-    scores_df = scores_df[~scores_df['place_id'].isin(interacted_items)]
+    #scores_df = scores_df[~scores_df['place_id'].isin(interacted_items)]
 
     # 점수 기준 내림차순 정렬
     scores_df = scores_df.sort_values(by='score', ascending=False)
-    recommended_place_ids = scores_df['place_id'].tolist()
 
+    recommended_place_ids = scores_df['place_id'].tolist()
     return recommended_place_ids
 
-# 사용자 ID 설정
+
 user_id = 1
 
-# 추천 함수 호출
 recommended_cafes = recommend_cafes(
     model,
     dataset,
