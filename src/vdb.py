@@ -52,10 +52,10 @@ def store_hashtags_in_db(hashtags, embeddings, sentiment):
 def find_similar_hashtag(new_embedding):
     # 새로운 임베딩과 기존 임베딩들 간의 유사도 계산
     results = db.query(query_embeddings=[new_embedding], n_results=1)
-    print(db.count())
+    # print(db.count())
     if db.count() == 0:
         return None, None, None, None, None
-    print("유사도 계산 결과:")
+    # print("유사도 계산 결과:")
     
     # 모든 유사도 결과를 확인
     min_distance = float('inf')
@@ -63,8 +63,8 @@ def find_similar_hashtag(new_embedding):
     most_similar_id = None
     most_similar_count = None
     
-    print(results)
-    print(results['metadatas'][0])
+    # print(results)
+    # print(results['metadatas'][0])
     min_distance = results['distances'][0]
     most_similar_document = results['documents'][0]
     most_similar_id = results['ids'][0]
@@ -95,16 +95,16 @@ def tag_valid(
 
     for hashtag, embedding in zip(hashtags, embeddings):
         similar_id, similar_hashtag, distance, similar_count, similar_sentiment = find_similar_hashtag(new_embedding=embedding)
-        print(f"for문 안 id: {similar_id}, distance: {distance}, count: {similar_count}")
+        # print(f"for문 안 id: {similar_id}, distance: {distance}, count: {similar_count}")
         if similar_hashtag and distance[0] < 0.2:
             new_tag.append(similar_hashtag[0])
             # vdb +=count
             db.update(ids=similar_id, metadatas=[{"count": int(similar_count) + 1, "sentiment": similar_sentiment}])
-            print(f"'{hashtag}' is similar to existing hashtag '{similar_hashtag}' and will be replaced.")
+            # print(f"'{hashtag}' is similar to existing hashtag '{similar_hashtag}' and will be replaced.")
         else:
             store_hashtags_in_db(hashtags=[hashtag], embeddings=[embedding], sentiment=sentiment)
             new_tag.append(hashtag)
-            print(f"Stored new hashtag: {hashtag}")
+            # print(f"Stored new hashtag: {hashtag}")
 
     return new_tag
 

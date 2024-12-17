@@ -71,7 +71,7 @@ async def get_or_create_tag(session: AsyncSession, tag_name: str) -> Tag:
         try:
             await session.flush()  # 데이터베이스에 반영
             # print(f"Inserted Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
-            logger.info(f"Inserted Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")        
+            # logger.info(f"Inserted Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")        
         except IntegrityError as e:
             await session.rollback()
             # print(f"IntegrityError while creating tag '{tag_name}': {e.orig}")
@@ -82,8 +82,8 @@ async def get_or_create_tag(session: AsyncSession, tag_name: str) -> Tag:
             # print(f"Unexpected error while creating tag '{tag_name}': {e}")
             logger.error(f"Unexpected error while creating tag '{tag_name}': {e}")            
             raise e
-    else:
-        logger.info(f"Retrieved existing Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
+    # else:
+    #     logger.info(f"Retrieved existing Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
     return tag
 
 async def add_visit(
@@ -118,12 +118,12 @@ async def add_visit(
             total_age = place_visit.age * place_visit.visit
             place_visit.visit += 1
             place_visit.age = (total_age + age) / place_visit.visit
-            logger.info(f"Updated PlaceVisit for place_id={place_id}: visit={place_visit.visit}, age={place_visit.age}")
+            # logger.info(f"Updated PlaceVisit for place_id={place_id}: visit={place_visit.visit}, age={place_visit.age}")
         else:
             # 새로운 PlaceVisit 레코드 생성
             place_visit = PlaceVisit(placeId=place_id, visit=1, age=age)
             session.add(place_visit)
-            logger.info(f"Created new PlaceVisit for place_id={place_id}: visit=1, age={age}")
+            # logger.info(f"Created new PlaceVisit for place_id={place_id}: visit=1, age={age}")
 
         return place_visit
 
@@ -164,7 +164,7 @@ async def add_place_tag(
             # 기존 PlaceTag가 존재하면 tagCount를 1 증가시킴
             existing_place_tag.tagCount += 1
             await session.flush()
-            logger.info(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")            
+            # logger.info(f"Updated PlaceTag: placeId={existing_place_tag.placeId}, tagId={existing_place_tag.tagId}, tagCount={existing_place_tag.tagCount}")            
             place_tag = existing_place_tag
         else:
             # 새로운 PlaceTag를 생성하고 삽입함
@@ -176,7 +176,7 @@ async def add_place_tag(
             )
             session.add(new_place_tag)
             await session.flush()
-            logger.info(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")            
+            # logger.info(f"Inserted PlaceTag: placeId={new_place_tag.placeId}, tagId={new_place_tag.tagId}, tagCount={new_place_tag.tagCount}")            
             place_tag = new_place_tag
 
         # 상위 5개 태그를 대표 태그로 설정
@@ -203,7 +203,7 @@ async def add_place_tag(
                 PlaceTag.tagId.in_(top_tag_ids)
             ).values(isRepresentative=True)
             await session.execute(set_representative_stmt)
-            logger.info(f"Set isRepresentative=True for top tags: {top_tag_ids}")
+            # logger.info(f"Set isRepresentative=True for top tags: {top_tag_ids}")
         
         # Commit은 함수 외부에서 처리하도록 함
         return place_tag
@@ -276,14 +276,14 @@ async def add_user_tags(
             result = await session.execute(stmt)
             existing_user_tag = result.scalar_one_or_none()
             if existing_user_tag:
-                logger.info(f"Updated UserPlaceTag: userId={existing_user_tag.userId}, placeId={existing_user_tag.placeId}, tagId={existing_user_tag.tagId}")
+                # logger.info(f"Updated UserPlaceTag: userId={existing_user_tag.userId}, placeId={existing_user_tag.placeId}, tagId={existing_user_tag.tagId}")
                 new_user_tags.append(existing_user_tag)
             else:
                 new_user_tag = UserPlaceTag(userId=user_id, placeId=place_id ,tagId=tag.id)
                 session.add(new_user_tag)
                 await session.flush()
                 await session.commit()
-                logger.info(f"Inserted UserPlaceTag: userId={new_user_tag.userId}, placeId={new_user_tag.placeId}, tagId={new_user_tag.tagId}")
+                # logger.info(f"Inserted UserPlaceTag: userId={new_user_tag.userId}, placeId={new_user_tag.placeId}, tagId={new_user_tag.tagId}")
                 new_user_tags.append(new_user_tag)
         except IntegrityError as e:
             logger.error(f"IntegrityError for userplacetag '{tag_name}' and user_id {user_id}: {e.orig}")

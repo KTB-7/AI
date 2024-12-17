@@ -3,8 +3,10 @@ import os
 from config import OPENAI_KEY
 os.environ['OPENAI_API_KEY'] = OPENAI_KEY
 
-from openai import OpenAI
-cli = OpenAI()
+import openai
+from openai import OpenAI, AsyncOpenAI
+# cli = OpenAI()
+cli = AsyncOpenAI()
 
 import base64
 import json
@@ -24,9 +26,9 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def extract_review_hashtags(review_text):
+async def extract_review_hashtags(review_text):
     try:    
-        completion = cli.beta.chat.completions.parse(
+        completion = await cli.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[
                 {
@@ -50,16 +52,16 @@ def extract_review_hashtags(review_text):
         )
         res = json.loads(completion.choices[0].message.content)
         return res
-    except cli.error.OpenAIError as e:
+    except openai.APIError as e:
         print(f"OpenAI API 호출 실패: {e}")
         return {'positive_tags': [], 'neutral_tags': [], 'negative_tags': []}
 
-def extract_image_hashtags(image_path):
+async def extract_image_hashtags(image_path):
     parsed_path = urllib.parse.urlparse(image_path)
     path = parsed_path.path.lstrip('/')
-    base64_image = encode_image_from_s3(path)
+    base64_image = await encode_image_from_s3(path)
     try:
-        completion = cli.beta.chat.completions.parse(
+        completion = await cli.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[
                 {
@@ -92,7 +94,7 @@ def extract_image_hashtags(image_path):
         )
         res = json.loads(completion.choices[0].message.content)
         return res
-    except cli.error.OpenAIError as e:
+    except openai.APIError as e:
         print(f"OpenAI API 호출 실패: {e}")
         return {'positive_tags': [], 'neutral_tags': [], 'negative_tags': []}
     

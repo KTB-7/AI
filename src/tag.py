@@ -22,21 +22,21 @@ class Tag_Response(BaseModel):
     isGened: bool
 
 # 태그 생성 함수
-def generate_tags(place_id: int, review_text: str, review_image_url: Optional[str] = None) -> Tuple[List[str], List[str], List[str]]:
+async def generate_tags(place_id: int, review_text: str, review_image_url: Optional[str] = None) -> Tuple[List[str], List[str], List[str]]:
     if(review_image_url is not None):
         topic = "VL"
     else:
         topic = "L"
 
-    ret = graph.invoke({"topic": [topic], "image_url": [review_image_url], "review_text": [review_text]})
+    ret = await graph.ainvoke({"topic": [topic], "image_url": [review_image_url], "review_text": [review_text]})
     
     return ret["positive_tags"], ret["neutral_tags"], ret["negative_tags"]
 
 # 태그 생성 엔드포인트
-@tag_router.post("/", response_model=Tag_Response)
+@tag_router.post("", response_model=Tag_Response)
 async def create_tags(request: Tag_Request, session: AsyncSession = Depends(get_db_session)):
     # 해시태그 생성
-    positive_res, neutral_res, negative_res = generate_tags(
+    positive_res, neutral_res, negative_res = await generate_tags(
         place_id=request.place_id,
         review_text=request.review_text,
         review_image_url=request.review_image_url

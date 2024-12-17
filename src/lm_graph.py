@@ -42,9 +42,9 @@ def br_gene_topic(state: overall_state) -> Sequence[str]:
 # ------------------------------
 # construct vision graph
 from model_chain import extract_image_hashtags
-def sub_vision_node(state: overall_state) -> overall_state:
-    vlm_tags = extract_image_hashtags(state["image_url"][0])
-    print(vlm_tags)
+async def sub_vision_node(state: overall_state) -> overall_state:
+    vlm_tags = await extract_image_hashtags(state["image_url"][0])
+    # print(vlm_tags)
     return {"positive_tags": vlm_tags["positive_tags"], "neutral_tags": vlm_tags["neutral_tags"], "negative_tags": vlm_tags["negative_tags"]}
 
 sub_vision_builder = StateGraph(overall_state)
@@ -58,9 +58,9 @@ sub_vision_graph = sub_vision_builder.compile()
 # ------------------------------
 # construct language graph
 from model_chain import extract_review_hashtags
-def sub_language_node(state: overall_state) -> overall_state:
-    llm_tags = extract_review_hashtags(state["review_text"][0])
-    print(llm_tags)
+async def sub_language_node(state: overall_state) -> overall_state:
+    llm_tags = await extract_review_hashtags(state["review_text"][0])
+    # print(llm_tags)
     return {"positive_tags": llm_tags["positive_tags"], "neutral_tags": llm_tags["neutral_tags"], "negative_tags": llm_tags["negative_tags"]}
 
 sub_language_builder = StateGraph(overall_state)
