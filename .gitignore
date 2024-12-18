@@ -7,3 +7,5 @@ dummy
 chroma_db
 vectordb
 __pycache__
+lightfm_test.py
+make_dummys.py
