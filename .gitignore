@@ -1,0 +1,7 @@
+.env
+db_operations.log
+src/todos.py
+dummy
+chroma_db
+vectordb
+__pycache__
