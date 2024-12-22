@@ -142,13 +142,13 @@ async def correct_tag_to_korean(tag: str) -> str:
             corrected_tag = corrected_data.get('corrected_tag', tag)
         except json.JSONDecodeError:
             # 응답이 JSON 형식이 아닐 경우, 단순히 응답 문자열을 사용
-            logger.warning(f"JSON 파싱 실패. 응답 내용: {content}")
+            # logger.warning(f"JSON 파싱 실패. 응답 내용: {content}")
             corrected_tag = content  # 또는 tag로 유지
         
-        logger.info(f"Corrected tag: {corrected_tag}, Original tag: {tag}")
+        # logger.info(f"Corrected tag: {corrected_tag}, Original tag: {tag}")
         return corrected_tag
     except Exception as e:
-        logger.error(f"태그 수정 중 오류 발생: {e}")
+        # logger.error(f"태그 수정 중 오류 발생: {e}")
         print(f"태그 수정 중 오류 발생: {e}")
         return tag  # 오류 발생 시 원본 태그 반환
 

@@ -13,23 +13,23 @@ from langchain_core.tools import tool
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 # ------------------------------
-# import logging
+import logging
 
-# # 개별 로거 생성
-# logger = logging.getLogger('lm_graph')
-# logger.setLevel(logging.INFO)
+# 개별 로거 생성
+logger = logging.getLogger('lm_graph')
+logger.setLevel(logging.INFO)
 
-# # FileHandler 생성 및 설정
-# file_handler = logging.FileHandler('lm_graph_operations.log')
-# file_handler.setLevel(logging.INFO)
+# FileHandler 생성 및 설정
+file_handler = logging.FileHandler('lm_graph_operations.log')
+file_handler.setLevel(logging.INFO)
 
-# # 로그 포맷 설정
-# formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-# file_handler.setFormatter(formatter)
+# 로그 포맷 설정
+formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+file_handler.setFormatter(formatter)
 
-# # 핸들러가 이미 추가되지 않았다면 추가
-# if not logger.hasHandlers():
-#     logger.addHandler(file_handler)
+# 핸들러가 이미 추가되지 않았다면 추가
+if not logger.hasHandlers():
+    logger.addHandler(file_handler)
 # ------------------------------
 
 # class overall_state(TypedDict):
