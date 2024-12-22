@@ -14,6 +14,26 @@ import urllib.parse
 
 from s3image import encode_image_from_s3
 
+# ------------------------------
+# # 개별 로거 생성
+# import logging
+
+# logger = logging.getLogger('lm_graph')
+# logger.setLevel(logging.INFO)
+
+# # FileHandler 생성 및 설정
+# file_handler = logging.FileHandler('lm_graph_operations.log')
+# file_handler.setLevel(logging.INFO)
+
+# # 로그 포맷 설정
+# formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+# file_handler.setFormatter(formatter)
+
+# # 핸들러가 이미 추가되지 않았다면 추가
+# if not logger.hasHandlers():
+#     logger.addHandler(file_handler)
+# ------------------------------
+
 class Tag_Response(BaseModel):
     tags: list[str]
 
@@ -21,6 +41,9 @@ class Tag_Score_Response(BaseModel):
     positive_tags: list[str]
     neutral_tags: list[str]
     negative_tags: list[str]
+
+class corrected_response(BaseModel):
+    corrected_tag: str
 
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
@@ -98,6 +121,36 @@ async def extract_image_hashtags(image_path):
         print(f"OpenAI API 호출 실패: {e}")
         return {'positive_tags': [], 'neutral_tags': [], 'negative_tags': []}
     
+async def correct_tag_to_korean(tag: str) -> str:
+    prompt = f"다음 태그는 영어와 한글이 혼용되어 있어. 한글만으로 태그가 이루어지도록 고쳐줘.: '{tag}'"
+    try:
+        response = await cli.beta.chat.completions.parse(
+                model="gpt-4o-mini",  # 사용할 모델명
+                messages=[
+                    {"role": "system", "content": "당신은 영어와 한국어의 전문가입니다."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format=corrected_response
+            )
+        
+        # 응답을 문자열로 가져옴
+        content = response.choices[0].message.content.strip()
+        
+        # 프롬프트를 JSON 형식으로 응답하도록 수정했기 때문에, JSON 파싱 시도
+        try:
+            corrected_data = json.loads(content)
+            corrected_tag = corrected_data.get('corrected_tag', tag)
+        except json.JSONDecodeError:
+            # 응답이 JSON 형식이 아닐 경우, 단순히 응답 문자열을 사용
+            logger.warning(f"JSON 파싱 실패. 응답 내용: {content}")
+            corrected_tag = content  # 또는 tag로 유지
+        
+        logger.info(f"Corrected tag: {corrected_tag}, Original tag: {tag}")
+        return corrected_tag
+    except Exception as e:
+        logger.error(f"태그 수정 중 오류 발생: {e}")
+        print(f"태그 수정 중 오류 발생: {e}")
+        return tag  # 오류 발생 시 원본 태그 반환
 
 # print(extract_image_hashtags("https://pinpung-s3.s3.ap-northeast-2.amazonaws.com/original-images/25"))
 # print(extract_review_hashtags("맛있어요!"))

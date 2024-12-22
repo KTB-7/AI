@@ -37,6 +37,10 @@ class Tag(Base):
 # Place_Tag ORM 모델
 class PlaceTag(Base):
     __tablename__ = 'placeTag'
+    __table_args__ = (
+        UniqueConstraint('placeId', 'tagId', name='uix_place_tag'),
+    )
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     placeId = Column(BigInteger, ForeignKey('Place.id', ondelete='CASCADE'), nullable=False)
     tagId = Column(BigInteger, ForeignKey('Tag.id', ondelete='CASCADE'), nullable=False)
@@ -46,10 +50,6 @@ class PlaceTag(Base):
     # 관계 설정
     place = relationship("Place", back_populates="place_tags")
     tag = relationship("Tag", back_populates="place_tags")
-    
-    __table_args__ = (
-        UniqueConstraint('placeId', 'tagId', name='uix_place_tag'),
-    )
 
 class PlaceVisit(Base):
     __tablename__ = 'placeVisit'
@@ -81,6 +81,9 @@ class User(Base):
 
 class UserPlaceTag(Base):
     __tablename__ = 'userPlaceTag'
+    __table_args__ = (
+        UniqueConstraint('userId', 'placeId', 'tagId', name='uix_user_place_tag'),
+    )
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     userId = Column(BigInteger, ForeignKey('User.id', ondelete='CASCADE'), nullable=False)

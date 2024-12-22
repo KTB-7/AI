@@ -45,7 +45,7 @@ async def get_recommendations(
     # print(userframe)
     # print(placeframe)
 
-    users, cafe_list = recommend_cafe(userfeature, placefeature, interactions, [request.user_id], [request.place_ids])
+    users, cafe_list = await recommend_cafe(userfeature, placefeature, interactions, [request.user_id], [request.place_ids])
     
     return Rec_Response_AI(cafe_list=cafe_list[0])
 
@@ -67,7 +67,7 @@ async def get_recommendations(
     # best_tags = await get_top_tags(session, request.user_id)
     place_ids_list = [request.place_ids] * len(best_tags)
 
-    tags, cafe_list = recommend_cafe(tagfeature, placefeature, interactions, best_tags, place_ids_list)
+    tags, cafe_list = await recommend_cafe(tagfeature, placefeature, interactions, best_tags, place_ids_list)
     print("rec.py tags : ", tags)
     print("rec.py cafe_list : ", cafe_list)
 

@@ -14,16 +14,21 @@ from config import MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DAT
 from schemas import Place, Tag, User, PlaceTag, PlaceVisit, UserPlaceTag, UserMenu, UserActivity
 from vdb import get_tag_sentiment, get_best_tags
 
-# logging
-logging.basicConfig(
-    filename='db_operations.log',  # 로그 파일 이름
-    level=logging.INFO,  # 로그 레벨 설정 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format='%(asctime)s %(levelname)s:%(name)s:%(message)s',  # 로그 메시지 형식
-    datefmt='%Y-%m-%d %H:%M:%S'  # 날짜 형식
-)
+# # 개별 로거 생성
+# logger = logging.getLogger('db_connect')
+# logger.setLevel(logging.WARNING)
 
-# logger obj create
-logger = logging.getLogger(__name__)
+# # FileHandler 생성 및 설정
+# file_handler = logging.FileHandler('db_connect_operations.log')
+# file_handler.setLevel(logging.WARNING)
+
+# # 로그 포맷 설정
+# formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+# file_handler.setFormatter(formatter)
+
+# # 핸들러가 이미 추가되지 않았다면 추가
+# if not logger.hasHandlers():
+#     logger.addHandler(file_handler)
 
 # Database connection details
 user = MYSQL_USER
@@ -364,6 +369,7 @@ async def get_tag_feature(
     taguser_result = await session.execute(stmt_taguser)
 
     rows = taguser_result.fetchall()
+    rows = sorted(rows, key=lambda x: x[0])
     print("taguser result", rows)
 
     return rows
@@ -486,7 +492,7 @@ async def get_userplace_interactions(
         sentiment_count[key] += 1
     
     averaged_interactions = [
-        (user_id, place_id, round(sentiment_sum[key] / sentiment_count[key], 3))
+        (user_id, place_id, sentiment_sum[key])# round(sentiment_sum[key] / sentiment_count[key], 3))
         for key, user_id, place_id in [
             (key, key[0], key[1]) for key in sentiment_sum
         ]
