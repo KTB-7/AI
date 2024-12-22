@@ -52,6 +52,7 @@ def store_hashtags_in_db(hashtags, embeddings, sentiment):
 def find_similar_hashtag(new_embedding):
     # 새로운 임베딩과 기존 임베딩들 간의 유사도 계산
     results = db.query(query_embeddings=[new_embedding], n_results=1)
+    # print(results)
     # print(db.count())
     if db.count() == 0:
         return None, None, None, None, None
@@ -115,7 +116,13 @@ def get_tag_sentiment(
     embeddings = embed_hashtags(hashtags=tag_ids)
     for tag, embedding in zip(tag_ids, embeddings):
         db_results = db.query(query_embeddings=[embedding], n_results=1)
-        sentiments[tag] = db_results['metadatas'][0][0]['sentiment']
+        sentiment_value = db_results['metadatas'][0][0]['sentiment']
+        if sentiment_value == -1:
+            sentiments[tag] = -1
+        elif sentiment_value == 1:
+            sentiments[tag] = 2
+        else:
+            sentiments[tag] = 1
         print(f"Sentiment for tag '{tag}': {db_results['documents'][0]} {sentiments[tag]}")
     
     return sentiments
@@ -124,8 +131,9 @@ def get_best_tags() -> list[str]:
     docus = db.get(where={"count": {"$gt": 1}}, include=['documents', 'metadatas'])
     
     combined = sorted(zip(docus['documents'], [meta['count'] for meta in docus['metadatas']]), key=lambda x: x[1], reverse=True)
-    
+    # print(combined)
     ret = [doc for doc, count in combined]
+    ret = ret[:10]
 
     return ret
 
@@ -141,8 +149,12 @@ if __name__ == "__main__":
     # tag_valid(["케이크 맛집"], 1)
     # tag_valid(["아이스아메리카노 맛집"], 1)
     # tag_valid(["녹차 좋아"], 1)
-    temp = get_best_tags()
-    print(temp)
+    # temp = get_best_tags()
+    # print(temp)
+
+    ex_embed = embed_hashtags(["깔끔한 인테리어"])
+    example = find_similar_hashtag(ex_embed[0])
+    print(example)
 
 
 """

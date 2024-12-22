@@ -30,7 +30,12 @@ async def generate_tags(place_id: int, review_text: str, review_image_url: Optio
 
     ret = await graph.ainvoke({"topic": [topic], "image_url": [review_image_url], "review_text": [review_text]})
     
-    return ret["positive_tags"], ret["neutral_tags"], ret["negative_tags"]
+    # 중복 제거
+    positive_tags = list(set(ret["positive_tags"]))
+    neutral_tags = list(set(ret["neutral_tags"]))
+    negative_tags = list(set(ret["negative_tags"]))
+
+    return positive_tags, neutral_tags, negative_tags
 
 # 태그 생성 엔드포인트
 @tag_router.post("", response_model=Tag_Response)

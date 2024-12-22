@@ -9,3 +9,7 @@ vectordb
 __pycache__
 lightfm_test.py
 make_dummys.py
+*.csv
+graph_operations.log
+*.log
+show_df.py
