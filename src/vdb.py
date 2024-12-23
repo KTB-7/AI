@@ -123,7 +123,7 @@ def get_tag_sentiment(
             sentiments[tag] = 2
         else:
             sentiments[tag] = 1
-        print(f"Sentiment for tag '{tag}': {db_results['documents'][0]} {sentiments[tag]}")
+        # print(f"Sentiment for tag '{tag}': {db_results['documents'][0]} {sentiments[tag]}")
     
     return sentiments
 
