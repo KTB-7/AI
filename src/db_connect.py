@@ -14,21 +14,27 @@ from config import MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DAT
 from schemas import Place, Tag, User, PlaceTag, PlaceVisit, UserPlaceTag, UserMenu, UserActivity
 from vdb import get_tag_sentiment, get_best_tags
 
-# 개별 로거 생성
-logger = logging.getLogger('db_connect')
-logger.setLevel(logging.WARNING)
+# # 개별 로거 생성
+# logger = logging.getLogger('db_connect')
+# logger.setLevel(logging.WARNING)
 
-# FileHandler 생성 및 설정
-file_handler = logging.FileHandler('db_connect_operations.log')
-file_handler.setLevel(logging.WARNING)
+# # FileHandler 생성 및 설정
+# file_handler = logging.FileHandler('db_connect_operations.log')
+# file_handler.setLevel(logging.WARNING)
 
-# 로그 포맷 설정
-formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-file_handler.setFormatter(formatter)
+# # 로그 포맷 설정
+# formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+# file_handler.setFormatter(formatter)
 
-# 핸들러가 이미 추가되지 않았다면 추가
-if not logger.hasHandlers():
-    logger.addHandler(file_handler)
+# # 핸들러가 이미 추가되지 않았다면 추가
+# if not logger.hasHandlers():
+#     logger.addHandler(file_handler)
+
+# --- SQLAlchemy Engine 로거 설정 추가 ---
+# SQLAlchemy의 Engine 로거 레벨을 WARNING으로 설정하여 INFO 로그(SQL 쿼리)를 억제
+sqlalchemy_logger = logging.getLogger('sqlalchemy.engine')
+sqlalchemy_logger.setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.engine').disabled = True
 
 # Database connection details
 user = MYSQL_USER
@@ -80,12 +86,12 @@ async def get_or_create_tag(session: AsyncSession, tag_name: str) -> Tag:
         except IntegrityError as e:
             await session.rollback()
             # print(f"IntegrityError while creating tag '{tag_name}': {e.orig}")
-            logger.error(f"IntegrityError while creating tag '{tag_name}': {e.orig}")            
+            # logger.error(f"IntegrityError while creating tag '{tag_name}': {e.orig}")            
             raise e
         except Exception as e:
             await session.rollback()
             # print(f"Unexpected error while creating tag '{tag_name}': {e}")
-            logger.error(f"Unexpected error while creating tag '{tag_name}': {e}")            
+            # logger.error(f"Unexpected error while creating tag '{tag_name}': {e}")            
             raise e
     # else:
     #     logger.info(f"Retrieved existing Tag: id={tag.id}, tagName={tag.tagName}, createdAt={tag.createdAt}, updatedAt={tag.updatedAt}")
@@ -133,10 +139,10 @@ async def add_visit(
         return place_visit
 
     except IntegrityError as e:
-        logger.error(f"IntegrityError for place_id {place_id}: {e.orig}")
+        # logger.error(f"IntegrityError for place_id {place_id}: {e.orig}")
         raise e
     except Exception as e:
-        logger.error(f"Unexpected error for place_id {place_id}: {e}")
+        # logger.error(f"Unexpected error for place_id {place_id}: {e}")
         raise e
 
 async def add_place_tag(
@@ -215,11 +221,11 @@ async def add_place_tag(
 
     except IntegrityError as e:
         await session.rollback()
-        logger.error(f"IntegrityError: {e.orig}")
+        # logger.error(f"IntegrityError: {e.orig}")
         raise e
     except Exception as e:
         await session.rollback()
-        logger.error(f"Error inserting/updating place_tag: {e}")
+        # logger.error(f"Error inserting/updating place_tag: {e}")
         raise e
 
 async def add_tags_and_place_tags(
@@ -256,11 +262,11 @@ async def add_tags_and_place_tags(
                 place_tags.append(place_tag)
             except IntegrityError as e:
                 # print(f"IntegrityError for tag '{tag_name}' and place_id {place_id}: {e.orig}")
-                logger.error(f"IntegrityError for tag '{tag_name}' and place_id {place_id}: {e.orig}")
+                # logger.error(f"IntegrityError for tag '{tag_name}' and place_id {place_id}: {e.orig}")
                 raise e
             except Exception as e:
                 # print(f"Unexpected error for tag '{tag_name}' and place_id {place_id}: {e}")
-                logger.error(f"Unexpected error for tag '{tag_name}' and place_id {place_id}: {e}")
+                # logger.error(f"Unexpected error for tag '{tag_name}' and place_id {place_id}: {e}")
                 raise e
     return place_tags
 
@@ -291,10 +297,10 @@ async def add_user_tags(
                 # logger.info(f"Inserted UserPlaceTag: userId={new_user_tag.userId}, placeId={new_user_tag.placeId}, tagId={new_user_tag.tagId}")
                 new_user_tags.append(new_user_tag)
         except IntegrityError as e:
-            logger.error(f"IntegrityError for userplacetag '{tag_name}' and user_id {user_id}: {e.orig}")
+            # logger.error(f"IntegrityError for userplacetag '{tag_name}' and user_id {user_id}: {e.orig}")
             raise e
         except Exception as e:
-            logger.error(f"Unexpected error for userplacetag '{tag_name}' and user_id {user_id}: {e}")
+            # logger.error(f"Unexpected error for userplacetag '{tag_name}' and user_id {user_id}: {e}")
             raise e
     return new_user_tags
 
@@ -343,7 +349,7 @@ async def get_top_tags(
 
     result = await session.execute(stmt)
     top_tags = result.scalars().all()
-    print("top tags", top_tags)
+    # print("top tags", top_tags)
 
     return top_tags
 
@@ -364,13 +370,13 @@ async def get_tag_feature(
     besttag_result = await session.execute(stmt_besttag)
     
     combined_tags = list(set(usertag_result.scalars().all()) | set(placetag_result.scalars().all()) | set(besttag_result.scalars().all()))
-    print("combined tags",combined_tags)
+    # print("combined tags",combined_tags)
     stmt_taguser = select(UserPlaceTag.tagId, UserPlaceTag.userId).where(UserPlaceTag.tagId.in_(combined_tags))
     taguser_result = await session.execute(stmt_taguser)
 
     rows = taguser_result.fetchall()
     rows = sorted(rows, key=lambda x: x[0])
-    print("taguser result", rows)
+    # print("taguser result", rows)
 
     return rows
 
@@ -401,15 +407,20 @@ async def make_frame(
     user_id: int,
     place_ids: List[int]
 ) -> Tuple[List[int], List[Union[int, str]]]:
-    print(user_id, place_ids)
+    # print(user_id, place_ids)
     stmt_userframe = select(UserPlaceTag.userId).where(UserPlaceTag.placeId.in_(place_ids)).distinct()
     res_userframe = await session.execute(stmt_userframe)
     user_list = res_userframe.scalars().all()
-    print("user_list", user_list)
+    user_list = [user_id] + user_list
+    user_list = list(set(user_list))
+    # print("user_list", user_list)
+
     stmt_placeframe = select(UserPlaceTag.placeId).where(UserPlaceTag.userId.in_(user_list)).distinct()
     res_placeframe = await session.execute(stmt_placeframe)
     place_list = res_placeframe.scalars().all()
-    print("place_list", place_list)
+    place_list = place_ids + place_list
+    place_list = list(set(place_list))
+    # print("place_list", place_list)
     return user_list, place_list
 
 async def get_user_info(
@@ -427,9 +438,9 @@ async def get_user_info(
     userage = userage_result.fetchall()
     usermenu = usermenu_result.fetchall()
     useractivity = useractivity_result.fetchall()
-    print("userage", userage)
-    print("usermenu", usermenu)
-    print("useractivity", useractivity)
+    # print("userage", userage)
+    # print("usermenu", usermenu)
+    # print("useractivity", useractivity)
     userfeature = userage + usermenu + useractivity
 
     return userfeature
@@ -449,8 +460,8 @@ async def get_place_info(
     placeavgage = placeavgage_result.fetchall()
     placeavgage = [(place_id, round(age, 1)) for place_id, age in placeavgage]
 
-    print("placereptag", placereptag)
-    print("placeavgage", placeavgage)
+    # print("placereptag", placereptag)
+    # print("placeavgage", placeavgage)
 
     placefeature = placereptag + placeavgage
 
@@ -468,7 +479,7 @@ async def get_userplace_interactions(
     tagsentiment_result = await session.execute(stmt_tagsentiment)
     tagsentiment = tagsentiment_result.scalars().all()
     sentiment_map = get_tag_sentiment(tagsentiment)
-    print("sentiment_map", sentiment_map)
+    # print("sentiment_map", sentiment_map)
     
     stmt_interactions = select(UserPlaceTag.userId, UserPlaceTag.placeId, UserPlaceTag.tagId).where(
         UserPlaceTag.userId.in_(user_ids),
@@ -476,11 +487,11 @@ async def get_userplace_interactions(
     )
     interactions_result = await session.execute(stmt_interactions)
     interactions = interactions_result.fetchall()
-    print("interactions", interactions)
+    # print("interactions", interactions)
     
     processed_interactions = []
     for user_id, place_id, tag_id in interactions:
-        print("interaction to map",user_id, place_id, tag_id, sentiment_map.get(tag_id))
+        # print("interaction to map",user_id, place_id, tag_id, sentiment_map.get(tag_id))
         processed_interactions.append([user_id, place_id, sentiment_map.get(tag_id, 0)])  # 기본값 0 설정
     
     sentiment_sum = defaultdict(float)
@@ -498,7 +509,7 @@ async def get_userplace_interactions(
         ]
     ]
     
-    print("averaged_interactions", averaged_interactions)
+    # print("averaged_interactions", averaged_interactions)
     
     
     return averaged_interactions

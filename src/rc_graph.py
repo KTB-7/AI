@@ -46,13 +46,13 @@ async def recommend_cafe(
         item_features=itemF2
     )
 
-    print("user_id_list\n", user_id_list)
-    print("place_ids_list\n", place_ids_list)
-    print("dataset fit users\n", userF1)
-    print("dataset fit items\n", itemF1)
-    print("dataset fit user_features\n", userF2)
-    print("dataset fit item_features\n", itemF2)
-    print("interactions\n", user_item_interactions)
+    # print("user_id_list\n", user_id_list)
+    # print("place_ids_list\n", place_ids_list)
+    # print("dataset fit users\n", userF1)
+    # print("dataset fit items\n", itemF1)
+    # print("dataset fit user_features\n", userF2)
+    # print("dataset fit item_features\n", itemF2)
+    # print("interactions\n", user_item_interactions)
     """
     user_feature_matrix = dataset.build_user_features([
     (row['user_id'], [tag.lstrip('#') for tag in row['user_tags']]) for idx, row in users_df.iterrows()
@@ -65,7 +65,7 @@ async def recommend_cafe(
             feature = str(feature)
         grouped_features[user_id].append(feature)
     user_res = [(key, value) for key, value in grouped_features.items()]
-    print("user_res\n\n", user_res)
+    # print("user_res\n\n", user_res)
 
     grouped_features = defaultdict(list)
     for item_id, feature in item_features:
@@ -75,12 +75,12 @@ async def recommend_cafe(
             feature = str(feature)
         grouped_features[item_id].append(feature)
     item_res = [(key, value) for key, value in grouped_features.items()]
-    print("item_res\n\n", item_res)
+    # print("item_res\n\n", item_res)
             
     user_res = sorted(user_res, key=lambda x: x[0])
     item_res = sorted(item_res, key=lambda x: x[0])
     user_item_interactions = sorted(user_item_interactions, key=lambda x: (x[0], x[1]))
-    print("interactions\n", user_item_interactions)
+    # print("interactions\n", user_item_interactions)
 
     user_feature_matrix = dataset.build_user_features(user_res)
     item_feature_matrix = dataset.build_item_features(item_res)
@@ -102,11 +102,17 @@ async def recommend_cafe(
     # print('\n\n\n\n')
 
     ret_list = []
+    no_matching_item = []
     for user_id, place_ids in zip(user_id_list, place_ids_list):
         user_internal_id = dataset.mapping()[0][user_id]
         item_internal_id = []
+        new_place_ids = []
         for item in place_ids:
-            item_internal_id.append(dataset.mapping()[2][item])
+            try:
+                item_internal_id.append(dataset.mapping()[2][item])
+                new_place_ids.append(item)
+            except KeyError:
+                no_matching_item.append(item)
         item_internal_id = np.array(item_internal_id)
 
         score = model.predict(
@@ -116,25 +122,29 @@ async def recommend_cafe(
             item_features=item_feature_matrix
         )
 
-        print("scores user\n", user_internal_id)
-        print("scores all items\n", item_internal_id)
+        # print("scores user\n", user_internal_id)
+        # print("scores all items\n", item_internal_id)
         # print("scores user_features\n", user_feature_matrix)
         # print("scores item_features\n", item_feature_matrix)
 
-        print("user_id\n", user_id)
-        print("score\n\n",score)
+        # print("user_id\n", user_id)
+        # print("score\n\n",score)
 
         scores_df = pd.DataFrame({
-            'item_id': list(place_ids),
+            'item_id': list(new_place_ids),
             'score': list(score)
         })
 
         scores_df = scores_df.sort_values(by='score', ascending=False)
-        recommend_place_ids = list(map(str, scores_df['item_id'].tolist()))
+        recommend_place_ids = scores_df['item_id'].tolist()
+        if no_matching_item:
+            recommend_place_ids += no_matching_item
+        recommend_place_ids = list(map(str, recommend_place_ids))
 
-        print("recommend_place_ids\n\n", recommend_place_ids)
+        # print("recommend_place_ids\n\n", recommend_place_ids)
 
         ret_list.append(recommend_place_ids)
     user_id_list = list(map(str, user_id_list))
+    
 
     return user_id_list, ret_list
