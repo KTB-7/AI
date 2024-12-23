@@ -130,7 +130,7 @@ def main():
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY가 설정되지 않았습니다. 환경 변수나 .env 파일에 설정해주세요.")
     
-    db_path = ".venv/AI/data/chroma_db"
+    db_path = ".venv/AI/function/chroma_db"
     
     # 디렉토리가 존재하지 않으면 생성
     os.makedirs(db_path, exist_ok=True)

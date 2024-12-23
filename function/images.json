@@ -1,0 +1,24 @@
+{
+    "images": [
+        {
+            "id": 1,
+            "file_path": ".venv/AI/function/images/cafe1.png"
+        },
+        {
+            "id": 2,
+            "file_path": ".venv/AI/function/images/cafe2.png"
+        },
+        {
+            "id": 3,
+            "file_path": ".venv/AI/function/images/cafe3.png"
+        },
+        {
+            "id": 4,
+            "file_path": ".venv/AI/function/images/cafe4.png"
+        },
+        {
+            "id": 5,
+            "file_path": ".venv/AI/function/imagescafe5.png"
+        }
+    ]
+}
