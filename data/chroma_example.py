@@ -9,23 +9,17 @@ from pydantic import BaseModel
 import chromadb
 import numpy as np
 import uuid
+from dotenv import load_dotenv
 
-
-OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
-openai.api_key = OPENAI_API_KEY
-
-chroma_client = chromadb.PersistentClient(path="C:/Users/jyhan/Desktop/2024/kakotechbootcamp/fastapi/chroma_db")
-db = chroma_client.get_or_create_collection(name="hashtag_embeddings")
-
-embedding_model = SentenceTransformer('snunlp/KR-SBERT-V40K-klueNLI-augSTS')
-
-class Tag_Response(BaseModel):
-    tags: list[str]
-    index: int
+# 디렉토리 중복 import 제거
 
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
+
+class Tag_Response(BaseModel):
+    tags: list[str]
+    index: int
 
 def extract_review_hashtags(review_text):
     try:
@@ -60,8 +54,7 @@ def extract_review_hashtags(review_text):
         print(f"OpenAI API 호출 실패: {e}")
         return {'tags': []}
 
-
-def embed_hashtags(hashtags):
+def embed_hashtags(hashtags, embedding_model):
     if not hashtags:
         print("No hashtags to embed.")
         return []
@@ -76,14 +69,12 @@ def embed_hashtags(hashtags):
         print("Hashtags list is empty after processing.")
         return []
 
-
-def store_hashtags_in_db(hashtags, embeddings):
+def store_hashtags_in_db(db, hashtags, embeddings):
     for hashtag, embedding in zip(hashtags, embeddings):
         unique_id = str(uuid.uuid4())  # 각 해시태그에 대해 고유한 ID 생성
         db.add(ids=[unique_id], documents=[hashtag], embeddings=[embedding], metadatas=[{"source": "new_review"}])
 
-
-def find_similar_hashtag(new_embedding):
+def find_similar_hashtag(db, new_embedding):
     # DB에서 모든 해시태그 임베딩 가져오기
     all_documents = db.get(include=['embeddings', 'documents', 'metadatas'])
     existing_embeddings = all_documents['embeddings']
@@ -99,10 +90,7 @@ def find_similar_hashtag(new_embedding):
     # 모든 유사도 결과를 확인
     min_distance = float('inf')
     most_similar_document = None
-    for document, distance in zip(results['documents'], results['distances']):
-        # distance가 리스트인 경우 첫 번째 요소 사용
-        if isinstance(distance, list):
-            distance = distance[0]
+    for document, distance in zip(results['documents'][0], results['distances'][0]):
         print(f"Document: '{document}', Distance: {distance}")
         if distance < min_distance:
             min_distance = distance
@@ -113,20 +101,19 @@ def find_similar_hashtag(new_embedding):
         return most_similar_document, min_distance
     return None, None
 
-
-def process_review(review_text):
+def process_review(review_text, db, embedding_model):
     hashtags = extract_review_hashtags(review_text)['tags']
-    embeddings = embed_hashtags(hashtags)
+    embeddings = embed_hashtags(hashtags, embedding_model)
 
     for hashtag, embedding in zip(hashtags, embeddings):
-        similar_hashtag, distance = find_similar_hashtag(embedding)
+        similar_hashtag, distance = find_similar_hashtag(db, embedding)
         if similar_hashtag and isinstance(distance, (float, int)) and distance < 0.4:
             print(f"'{hashtag}' is similar to existing hashtag '{similar_hashtag}' and will be replaced.")
         else:
-            store_hashtags_in_db([hashtag], [embedding])
+            store_hashtags_in_db(db, [hashtag], [embedding])
             print(f"Stored new hashtag: {hashtag}")
 
-def print_db_contents():
+def print_db_contents(db):
     all_documents = db.get(include=['documents', 'embeddings', 'metadatas'])
     if all_documents and len(all_documents['documents']) > 0:
         print("DB에 저장된 데이터:")
@@ -135,8 +122,33 @@ def print_db_contents():
     else:
         print("DB가 비어있습니다.")
 
+def main():
+    load_dotenv()  # .env 파일의 변수를 환경 변수로 로드
+    
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY가 설정되지 않았습니다. 환경 변수나 .env 파일에 설정해주세요.")
+    
+    db_path = ".venv/AI/data/chroma_db"
+    
+    # 디렉토리가 존재하지 않으면 생성
+    os.makedirs(db_path, exist_ok=True)
+    
+    chroma_client = chromadb.PersistentClient(path=db_path)
+    db = chroma_client.get_or_create_collection(name="hashtag_embeddings")
+    
+    # 모델 로딩을 main 블록 안으로 이동
+    model_name = 'snunlp/KR-SBERT-V40K-klueNLI-augSTS'
+    try:
+        embedding_model = SentenceTransformer(model_name)
+    except OSError as e:
+        print(f"모델 로딩 실패: {e}")
+        return
+    
+    example_review = "아이스아메리카노 맛있어요"
+    process_review(example_review, db, embedding_model)
+    print_db_contents(db)
 
 if __name__ == "__main__":
-    example_review = "빈자리를 본 기억이 없었는데 평일 오전에 가보니 자리가 있네요... 엄청 인기"
-    process_review(example_review)
-    print_db_contents()
+    main()
