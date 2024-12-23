@@ -17,7 +17,7 @@ class Rec_Request(BaseModel):
     place_ids: List[int]
 
 class Rec_Response_AI(BaseModel):
-    cafe_list: List[str]
+    cafe_list: List[int]
 
 class Rec_Response_Popular(BaseModel):
     hashtags: List[str]
@@ -47,7 +47,9 @@ async def get_recommendations(
 
     users, cafe_list = await recommend_cafe(userfeature, placefeature, interactions, [request.user_id], [request.place_ids])
     
-    return Rec_Response_AI(cafe_list=cafe_list[0])
+    cafe_list = list(map(int, cafe_list[0]))
+
+    return Rec_Response_AI(cafe_list=cafe_list)
 
 @recommendation_router.post("/popular", response_model=Rec_Response_Popular)
 async def get_recommendations(
