@@ -52,7 +52,7 @@ def encode_image(image_path):
 async def extract_review_hashtags(review_text):
     try:    
         completion = await cli.beta.chat.completions.parse(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
@@ -85,7 +85,7 @@ async def extract_image_hashtags(image_path):
     base64_image = await encode_image_from_s3(path)
     try:
         completion = await cli.beta.chat.completions.parse(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
@@ -125,7 +125,7 @@ async def correct_tag_to_korean(tag: str) -> str:
     prompt = f"다음 태그는 영어와 한글이 혼용되어 있어. 한글만으로 태그가 이루어지도록 고쳐줘.: '{tag}'"
     try:
         response = await cli.beta.chat.completions.parse(
-                model="gpt-4o-mini",  # 사용할 모델명
+                model="gpt-4o",  # 사용할 모델명
                 messages=[
                     {"role": "system", "content": "당신은 영어와 한국어의 전문가입니다."},
                     {"role": "user", "content": prompt}
