@@ -46,13 +46,16 @@ async def recommend_cafe(
         item_features=itemF2
     )
 
-    # print("user_id_list\n", user_id_list)
-    # print("place_ids_list\n", place_ids_list)
-    # print("dataset fit users\n", userF1)
-    # print("dataset fit items\n", itemF1)
-    # print("dataset fit user_features\n", userF2)
-    # print("dataset fit item_features\n", itemF2)
-    # print("interactions\n", user_item_interactions)
+    print("user_id_list\n", user_id_list)
+    print("place_ids_list\n", place_ids_list)
+    print("dataset fit users\n", userF1)
+    print("dataset fit items\n", itemF1)
+    print("dataset fit user_features\n", userF2)
+    print("dataset fit item_features\n", itemF2)
+    print("interactions\n", user_item_interactions)
+
+    if not user_item_interactions:
+        return user_id_list, [[str(place_id) for place_id in place_ids] for place_ids in place_ids_list]
     """
     user_feature_matrix = dataset.build_user_features([
     (row['user_id'], [tag.lstrip('#') for tag in row['user_tags']]) for idx, row in users_df.iterrows()
