@@ -16,20 +16,20 @@ from langgraph.prebuilt import ToolNode
 import logging
 
 # 개별 로거 생성
-logger = logging.getLogger('lm_graph')
-logger.setLevel(logging.INFO)
+# logger = logging.getLogger('lm_graph')
+# logger.setLevel(logging.INFO)
 
-# FileHandler 생성 및 설정
-file_handler = logging.FileHandler('lm_graph_operations.log')
-file_handler.setLevel(logging.INFO)
+# # FileHandler 생성 및 설정
+# file_handler = logging.FileHandler('lm_graph_operations.log')
+# file_handler.setLevel(logging.INFO)
 
-# 로그 포맷 설정
-formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-file_handler.setFormatter(formatter)
+# # 로그 포맷 설정
+# formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+# file_handler.setFormatter(formatter)
 
-# 핸들러가 이미 추가되지 않았다면 추가
-if not logger.hasHandlers():
-    logger.addHandler(file_handler)
+# # 핸들러가 이미 추가되지 않았다면 추가
+# if not logger.hasHandlers():
+#     logger.addHandler(file_handler)
 # ------------------------------
 
 # class overall_state(TypedDict):
@@ -83,7 +83,7 @@ async def verify_tag(state: overall_state) -> overall_state:
     corrected_negative_tags = await process_tags(negative_tags)
     new_state["negative_tags"] = corrected_negative_tags
 
-    logger.info(f"Tags verified and corrected: {new_state['positive_tags']}, {new_state['neutral_tags']}, {new_state['negative_tags']}")
+    # logger.info(f"Tags verified and corrected: {new_state['positive_tags']}, {new_state['neutral_tags']}, {new_state['negative_tags']}")
 
     new_state["verified_flag"] = True
 
@@ -92,22 +92,22 @@ async def verify_tag(state: overall_state) -> overall_state:
 # tmp state
 def tmp(state : overall_state):
     state["verified_flag"] = False
-    logger.warning(f"tmp : Topic: {state['topic']}", f"Image URL: {state['image_url']}", f"Review Text: {state['review_text']}", f"Positive Tags: {state['positive_tags']}", f"Neutral Tags: {state['neutral_tags']}", f"Negative Tags: {state['negative_tags']}")
-    logger.info(f"tmp 1 : Topic: {state['topic']}", f"Image URL: {state['image_url']}", f"Review Text: {state['review_text']}", f"Positive Tags: {state['positive_tags']}", f"Neutral Tags: {state['neutral_tags']}", f"Negative Tags: {state['negative_tags']}")
-    print("concat", state["topic"], state["image_url"], state["review_text"], state["positive_tags"], state["neutral_tags"], state["negative_tags"])
+    # logger.warning(f"tmp : Topic: {state['topic']}", f"Image URL: {state['image_url']}", f"Review Text: {state['review_text']}", f"Positive Tags: {state['positive_tags']}", f"Neutral Tags: {state['neutral_tags']}", f"Negative Tags: {state['negative_tags']}")
+    # logger.info(f"tmp 1 : Topic: {state['topic']}", f"Image URL: {state['image_url']}", f"Review Text: {state['review_text']}", f"Positive Tags: {state['positive_tags']}", f"Neutral Tags: {state['neutral_tags']}", f"Negative Tags: {state['negative_tags']}")
+    # print("concat", state["topic"], state["image_url"], state["review_text"], state["positive_tags"], state["neutral_tags"], state["negative_tags"])
     # print("tmp", state["topic"][-1], state["image_url"][-1], state["review_text"][-1], state["positive_tags"][-1], state["neutral_tags"][-1], state["negative_tags"][-1])
     return state
 
 def tmp2(state : overall_state):
-    logger.warning(f"tmp 2 : Topic: {state['topic']}", f"Image URL: {state['image_url']}", f"Review Text: {state['review_text']}", f"Positive Tags: {state['positive_tags']}", f"Neutral Tags: {state['neutral_tags']}", f"Negative Tags: {state['negative_tags']}")
-    logger.info(f"tmp 2 : Topic: {state['topic']}", f"Image URL: {state['image_url']}", f"Review Text: {state['review_text']}", f"Positive Tags: {state['positive_tags']}", f"Neutral Tags: {state['neutral_tags']}", f"Negative Tags: {state['negative_tags']}")
-    print("concat", state["topic"], state["image_url"], state["review_text"], state["positive_tags"], state["neutral_tags"], state["negative_tags"])
+    # logger.warning(f"tmp 2 : Topic: {state['topic']}", f"Image URL: {state['image_url']}", f"Review Text: {state['review_text']}", f"Positive Tags: {state['positive_tags']}", f"Neutral Tags: {state['neutral_tags']}", f"Negative Tags: {state['negative_tags']}")
+    # logger.info(f"tmp 2 : Topic: {state['topic']}", f"Image URL: {state['image_url']}", f"Review Text: {state['review_text']}", f"Positive Tags: {state['positive_tags']}", f"Neutral Tags: {state['neutral_tags']}", f"Negative Tags: {state['negative_tags']}")
+    # print("concat", state["topic"], state["image_url"], state["review_text"], state["positive_tags"], state["neutral_tags"], state["negative_tags"])
     # print("tmp", state["topic"][-1], state["image_url"][-1], state["review_text"][-1], state["positive_tags"][-1], state["neutral_tags"][-1], state["negative_tags"][-1])
     return {"positive_tags": state["positive_tags"], "neutral_tags": state["neutral_tags"], "negative_tags": state["negative_tags"], "verified_flag": state["verified_flag"]}
 # ------------------------------
 # conditional branching
 def br_gene_topic(state: overall_state) -> Sequence[str]:
-    logger.info(f"Topic: {state['topic'][0]}")
+    # logger.info(f"Topic: {state['topic'][0]}")
     if(state['topic'][0] == "VL"):
         return ["VLM_Tags", "LLM_Tags"]
     else:
@@ -128,7 +128,7 @@ def br_verify_korean(state: overall_state) -> Sequence[str]:
         if (korean_regex.search(tag) and english_regex.search(tag)):
             flag = 1
 
-    logger.info(f"Korean-English mixed tags: {flag}, Verified flag: {state['verified_flag']}")
+    # logger.info(f"Korean-English mixed tags: {flag}, Verified flag: {state['verified_flag']}")
 
     if flag == 1 and state["verified_flag"] == False:
         return ["verify_tag"]
@@ -140,7 +140,7 @@ from model_chain import extract_image_hashtags
 async def sub_vision_node(state: overall_state) -> overall_state:
     vlm_tags = await extract_image_hashtags(state["image_url"][0])
     # print(vlm_tags)
-    logger.info(f"Vision tags: {vlm_tags}")
+    # logger.info(f"Vision tags: {vlm_tags}")
     return {"positive_tags": vlm_tags["positive_tags"], "neutral_tags": vlm_tags["neutral_tags"], "negative_tags": vlm_tags["negative_tags"]}
 
 sub_vision_builder = StateGraph(overall_state)
@@ -157,7 +157,7 @@ from model_chain import extract_review_hashtags
 async def sub_language_node(state: overall_state) -> overall_state:
     llm_tags = await extract_review_hashtags(state["review_text"][0])
     # print(llm_tags)
-    logger.info(f"Language tags: {llm_tags}")
+    # logger.info(f"Language tags: {llm_tags}")
     return {"positive_tags": llm_tags["positive_tags"], "neutral_tags": llm_tags["neutral_tags"], "negative_tags": llm_tags["negative_tags"]}
 
 sub_language_builder = StateGraph(overall_state)
