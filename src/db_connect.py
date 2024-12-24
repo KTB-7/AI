@@ -14,27 +14,27 @@ from config import MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DAT
 from schemas import Place, Tag, User, PlaceTag, PlaceVisit, UserPlaceTag, UserMenu, UserActivity
 from vdb import get_tag_sentiment, get_best_tags
 
-# # 개별 로거 생성
-# logger = logging.getLogger('db_connect')
-# logger.setLevel(logging.WARNING)
+# 개별 로거 생성
+logger = logging.getLogger('db_connect')
+logger.setLevel(logging.WARNING)
 
-# # FileHandler 생성 및 설정
-# file_handler = logging.FileHandler('db_connect_operations.log')
-# file_handler.setLevel(logging.WARNING)
+# FileHandler 생성 및 설정
+file_handler = logging.FileHandler('db_connect_operations.log')
+file_handler.setLevel(logging.WARNING)
 
-# # 로그 포맷 설정
-# formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-# file_handler.setFormatter(formatter)
+# 로그 포맷 설정
+formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+file_handler.setFormatter(formatter)
 
-# # 핸들러가 이미 추가되지 않았다면 추가
-# if not logger.hasHandlers():
-#     logger.addHandler(file_handler)
+# 핸들러가 이미 추가되지 않았다면 추가
+if not logger.hasHandlers():
+    logger.addHandler(file_handler)
 
 # --- SQLAlchemy Engine 로거 설정 추가 ---
 # SQLAlchemy의 Engine 로거 레벨을 WARNING으로 설정하여 INFO 로그(SQL 쿼리)를 억제
-sqlalchemy_logger = logging.getLogger('sqlalchemy.engine')
-sqlalchemy_logger.setLevel(logging.WARNING)
-logging.getLogger('sqlalchemy.engine').disabled = True
+# sqlalchemy_logger = logging.getLogger('sqlalchemy.engine')
+# sqlalchemy_logger.setLevel(logging.WARNING)
+# logging.getLogger('sqlalchemy.engine').disabled = True
 
 # Database connection details
 user = MYSQL_USER

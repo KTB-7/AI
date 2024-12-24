@@ -38,7 +38,7 @@ async def generate_tags(place_id: int, review_text: str, review_image_url: Optio
     return positive_tags, neutral_tags, negative_tags
 
 # 태그 생성 엔드포인트
-@tag_router.post("", response_model=Tag_Response)
+@tag_router.post("/", response_model=Tag_Response)
 async def create_tags(request: Tag_Request, session: AsyncSession = Depends(get_db_session)):
     # 해시태그 생성
     positive_res, neutral_res, negative_res = await generate_tags(
