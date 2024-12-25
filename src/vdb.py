@@ -66,6 +66,9 @@ def find_similar_hashtag(new_embedding):
     
     # print(results)
     # print(results['metadatas'][0])
+    if results is None:
+        return None, None, None, None, None
+
     min_distance = results['distances'][0]
     most_similar_document = results['documents'][0]
     most_similar_id = results['ids'][0]
