@@ -13,6 +13,11 @@ app = FastAPI()
 app.include_router(tag_router)
 app.include_router(recommendation_router)
 
+# Health check
+@app.get('/health')
+def health_check():
+    return {"status": "ok"}
+
 @app.get('/')
 def home():
     return {'message' : 'main'}
